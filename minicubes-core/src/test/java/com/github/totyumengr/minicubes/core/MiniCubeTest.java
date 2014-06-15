@@ -19,21 +19,26 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
+import org.junit.runners.MethodSorters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
 
-import com.github.totyumengr.minicubes.core.MiniCube;
 import com.github.totyumengr.minicubes.core.FactTable.FactTableBuilder;
 
 /**
  * @author mengran
  *
  */
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class MiniCubeTest {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(MiniCubeTest.class);
@@ -69,11 +74,54 @@ public class MiniCubeTest {
     }
     
     @Test
-    public void testSum() {
+    public void test1_1_Sum_all() throws Throwable {
         
-        Assert.assertNotNull(miniCube);
+        for (int i = 0; i < 3; i++) {
+            Assert.assertEquals("138240687.91500000", miniCube.sum("csm").toString());
+            Thread.sleep(1000L);
+        }
+    }
+    
+    @Test
+    public void test1_2_Sum_filter_tradeId() throws Throwable {
         
-        Assert.assertEquals("138240687.91500000", miniCube.sum("csm").toString());
+        Map<String, List<Long>> filter = new HashMap<String, List<Long>>(1);
+        filter.put("tradeId", Arrays.asList(new Long[] {
+            3205L, 3206L, 3207L, 3208L, 3209L, 3210L, 3212L, 3299L, 
+            3204L, 3203L, 3202L, 3201L, 3211L}));
+        
+        for (int i = 0; i < 5; i++) {
+            Assert.assertEquals("41612111.56000000", miniCube.sum("csm", filter).toString());
+            Thread.sleep(1000L);
+        }
+        
+    }
+    
+    @Test
+    public void test_2_1_Group_tradeId_filter_tradeId() throws Throwable {
+        
+        Map<String, List<Long>> filter = new HashMap<String, List<Long>>(1);
+        filter.put("tradeId", Arrays.asList(new Long[] {
+            3205L, 3206L, 3207L, 3208L, 3209L, 3210L, 3212L, 3299L, 
+            3204L, 3203L, 3202L, 3201L, 3211L}));
+        
+        for (int i = 0; i < 5; i++) {
+            Map<Long, BigDecimal> group = miniCube.group("csm", "tradeId", filter);
+            Assert.assertEquals("543138.14000000", group.get(3201L).toString());
+            Assert.assertEquals("8994005.53000000", group.get(3202L).toString());
+            Assert.assertEquals("7236913.98000000", group.get(3203L).toString());
+            Assert.assertEquals("4711386.93000000", group.get(3299L).toString());
+            Assert.assertEquals("5060157.38000000", group.get(3204L).toString());
+            Assert.assertEquals("1878194.96000000", group.get(3205L).toString());
+            Assert.assertEquals("2366059.53000000", group.get(3206L).toString());
+            Assert.assertEquals("2831228.01000000", group.get(3207L).toString());
+            Assert.assertEquals("302801.76000000", group.get(3208L).toString());
+            Assert.assertEquals("759776.22000000", group.get(3209L).toString());
+            Assert.assertEquals("6359417.21000000", group.get(3210L).toString());
+            Assert.assertEquals("355185.79000000", group.get(3211L).toString());
+            Assert.assertEquals("213846.12000000", group.get(3212L).toString());
+            Thread.sleep(1000L);
+        }
     }
     
 }

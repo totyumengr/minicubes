@@ -18,6 +18,7 @@ package com.github.totyumengr.minicubes.core;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,11 +32,12 @@ public class FactTable {
     
     private Meta meta;
     private Map<Long, Record> records;
+    private Collection<Record> recordList;
     
     private static class Meta {
         
         private String name;
-        private List<String> dimNames = new ArrayList<String>();
+        private Map<String, Integer> dimNames = new HashMap<String, Integer>();
         private Map<String, Integer> indNames = new HashMap<String, Integer>();
 
         @Override
@@ -55,11 +57,23 @@ public class FactTable {
             super();
             this.id = id;
         }
+        
+        public Long getId() {
+            
+            return id;
+        }
 
         public BigDecimal getInd(String indName) {
             
             int index = FactTable.this.getIndIndex(indName);
             return indOfFact.get(index);
+        }
+        
+        public Long getDim(String dimName) {
+            
+            int index = FactTable.this.getDimIndex(dimName);
+            long dim = dimOfFact.get(index);
+            return dim;
         }
 
         @Override
@@ -102,7 +116,10 @@ public class FactTable {
             }
             // FIXME: Check exists?
             
-            current.meta.dimNames.addAll(dimColumnNames);
+            int index = current.meta.dimNames.size();
+            for (int i = 0; i < dimColumnNames.size(); i++) {
+                current.meta.dimNames.put(dimColumnNames.get(i), index + i);
+            }
             return this;
         }
         
@@ -161,27 +178,44 @@ public class FactTable {
             }
             
             IN_BUILDING.set(null);
+            current.recordList = Collections.unmodifiableCollection(current.records.values());
+            
             return current;
         }
     }
     
     public Collection<Record> getRecords() {
-        return records.values();
+        return recordList;
     }
 
     /**
      * Indicate index by search {{@link #meta}.
      * @param indName Indicate names 
-     * @return indicate values in fact-table
+     * @return indicate index in fact-table
      * @throws IllegalArgumentException if indicate names is empty or invalid.
      */
     public int getIndIndex(String indName) throws IllegalArgumentException {
         
-        if (indName == null || "".equals(indName) || !meta.indNames.containsKey(indName)) {
+        int index = -1;
+        if (indName == null || "".equals(indName) || (index = meta.indNames.get(indName)) < 0) {
             throw new IllegalArgumentException();
         }
         
-        int index = meta.indNames.get(indName);
+        return index;
+    }
+    
+    /**
+     * Dimension index by search {{@link #meta}.
+     * @param dimName Dimension names 
+     * @return dimension index in fact-table
+     * @throws IllegalArgumentException if indicate names is empty or invalid.
+     */
+    public int getDimIndex(String dimName) throws IllegalArgumentException {
+        
+        int index = -1;
+        if (dimName == null || "".equals(dimName) || (index = meta.dimNames.get(dimName)) < 0) {
+            throw new IllegalArgumentException();
+        }
         return index;
     }
 
