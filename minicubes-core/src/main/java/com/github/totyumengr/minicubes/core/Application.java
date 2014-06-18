@@ -21,6 +21,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
 /**
+ * Spring-Boot app entry point. Will not package for dependency.
  * @author mengran
  *
  */

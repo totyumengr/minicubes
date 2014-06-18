@@ -42,9 +42,9 @@ import com.github.totyumengr.minicubes.core.FactTable.FactTableBuilder;
  *
  */
 @Controller
-public class PerformanceController {
+public class BootPerformanceController {
     
-    private static final Logger LOGGER = LoggerFactory.getLogger(PerformanceController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(BootPerformanceController.class);
     
     private ObjectMapper objectMapper = new ObjectMapper();
     
