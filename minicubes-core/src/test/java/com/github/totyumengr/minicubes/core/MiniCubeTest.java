@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.totyumengr.minicubes.core.FactTable.FactTableBuilder;
 
 /**
@@ -48,19 +49,24 @@ public class MiniCubeTest {
     @BeforeClass
     public static void prepare() throws Throwable {
         
+        String dataFile = System.getProperty("dataFile", "data_fc_bd_qs_day_detail_20140606.data");
+        
         FactTableBuilder builder = new FactTableBuilder().build("MiniCubeTest")
             .addDimColumns(Arrays.asList(new String[] {"the_date", "tradeId", "productLineId", "postId"}))
             .addIndColumns(Arrays.asList(new String[] {"csm", "cash", "click", "shw"}));
         
         long startTime = System.currentTimeMillis();
-        LOGGER.info("prepare - start: {}", startTime);
-        ClassPathResource resource = new ClassPathResource("data_fc_bd_qs_day_detail_20140606.data");
+        LOGGER.info("prepare {} - start: {}", dataFile, startTime);
+        ClassPathResource resource = new ClassPathResource(dataFile);
         BufferedReader reader = new BufferedReader(new InputStreamReader(resource.getInputStream()));
         String line = null;
         Long index = 0L;
         while ((line = reader.readLine()) != null) {
             String[] split = line.split("\t");
             index++;
+            if (index % 100000 == 0) {
+                LOGGER.debug("Load {} records", index);
+            }
             builder.addDimDatas(index, Arrays.asList(new Long[] {
                 Long.valueOf(split[0]), Long.valueOf(split[1]), Long.valueOf(split[2]), Long.valueOf(split[3])}));
             builder.addIndDatas(index, Arrays.asList(new BigDecimal[] {
@@ -74,10 +80,12 @@ public class MiniCubeTest {
     }
     
     @Test
-    public void test1_1_Sum_all() throws Throwable {
+    public void test1_1_Sum_20140606() throws Throwable {
         
+        Map<String, List<Long>> filter = new HashMap<String, List<Long>>(1);
+        filter.put("the_date", Arrays.asList(new Long[] {20140606L}));
         for (int i = 0; i < 3; i++) {
-            Assert.assertEquals("138240687.91500000", miniCube.sum("csm").toString());
+            Assert.assertEquals("138240687.91500000", miniCube.sum("csm", filter).toString());
             Thread.sleep(1000L);
         }
     }
@@ -89,6 +97,8 @@ public class MiniCubeTest {
         filter.put("tradeId", Arrays.asList(new Long[] {
             3205L, 3206L, 3207L, 3208L, 3209L, 3210L, 3212L, 3299L, 
             3204L, 3203L, 3202L, 3201L, 3211L}));
+        LOGGER.info(new ObjectMapper().writeValueAsString(filter));
+        
         
         for (int i = 0; i < 5; i++) {
             Assert.assertEquals("41612111.56000000", miniCube.sum("csm", filter).toString());
