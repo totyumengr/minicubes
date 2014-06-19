@@ -134,4 +134,19 @@ public class MiniCubeTest {
         }
     }
     
+    @Test
+    public void test_2_2_Group_tradeId() throws Throwable {
+        
+        for (int i = 0; i < 5; i++) {
+            Map<Long, BigDecimal> group = miniCube.group("csm", "tradeId", null);
+            Assert.assertEquals(210, group.size());
+            Assert.assertEquals("274795.77600000", group.get(-1L).toString());
+            Assert.assertEquals("108080.82000000", group.get(3099L).toString());
+            Assert.assertEquals("72360.92000000", group.get(3004L).toString());
+            Assert.assertEquals("31828.81000000", group.get(502L).toString());
+            Assert.assertEquals("50708.85000000", group.get(505L).toString());
+            Thread.sleep(1000L);
+        }
+    }
+    
 }
