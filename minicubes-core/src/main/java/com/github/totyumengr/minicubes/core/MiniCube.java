@@ -32,7 +32,11 @@ import org.slf4j.LoggerFactory;
 import com.github.totyumengr.minicubes.core.FactTable.Record;
 
 /**
- * In-memory cube base on java8 stream feature.
+ * In-memory cube base on java8 stream feature and use memory calculation for best performance(millisecond level).
+ * Distributed architect is important, {@link MiniCube} design as unit participant, the one logic level cube will 
+ * be API for users.
+ * 
+ * <p>{@link MiniCube} design for easily fast transfer between cluster nodes to support fail-safe feature.
  * 
  * @author mengran
  *
@@ -77,11 +81,26 @@ public class MiniCube {
         return factTable.getRecords().parallelStream().filter(andFilter);
     }
 
+    /**
+     * Sum calculation of given indicate with filter. It equal to "SELECT SUM({indName}) FROM {fact table of cube}".
+     * @param indName indicate name for sum
+     * @return result that formated using {@value #IND_SCALE}
+     */
     public BigDecimal sum(String indName) {
         
+        // Delegate to overload method
         return sum(indName, null);
     }
     
+    // ---------- Calculation API ----------
+    
+    /**
+     * Sum calculation of given indicate with filter. It equal to "SELECT SUM({indName}) FROM {fact table of cube} WHERE 
+     * {dimension1 IN (a, b, c)} AND {dimension2 IN (d, e, f)}".
+     * @param indName indicate name for sum
+     * @param filterDims filter dimensions
+     * @return result that formated using {@value #IND_SCALE}
+     */
     public BigDecimal sum(String indName, Map<String, List<Long>> filterDims) {
         
         long enterTime = System.currentTimeMillis();
@@ -97,7 +116,8 @@ public class MiniCube {
                 }
             }).reduce(new BigDecimal(0), (x, y) -> x.add(y))
                 .setScale(IND_SCALE, BigDecimal.ROUND_HALF_UP);
-        LOGGER.info("Sum {} filter {} result {} using {} ms.", indName, filterDims, sum, System.currentTimeMillis() - enterTime);
+        LOGGER.info("Sum {} filter {} result {} using {} ms.", indName, filterDims, sum, 
+            System.currentTimeMillis() - enterTime);
         
         return sum;
     }
@@ -116,7 +136,8 @@ public class MiniCube {
                     }
                 }, (x, y) -> x.add(y))))
             .forEach((k, v) -> group.put(k, v.setScale(IND_SCALE, BigDecimal.ROUND_HALF_UP)));
-        LOGGER.info("Group by {} sum {} filter {} result {} using {} ms.", groupByDimName, indName, filterDims, group, System.currentTimeMillis() - enterTime);
+        LOGGER.info("Group by {} sum {} filter {} result {} using {} ms.", groupByDimName, indName, filterDims, group, 
+            System.currentTimeMillis() - enterTime);
         return group;
     }
 

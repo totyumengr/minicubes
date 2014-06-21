@@ -60,7 +60,7 @@ public class MiniCubeTest {
         ClassPathResource resource = new ClassPathResource(dataFile);
         BufferedReader reader = new BufferedReader(new InputStreamReader(resource.getInputStream()));
         String line = null;
-        Long index = 0L;
+        Integer index = 0;
         while ((line = reader.readLine()) != null) {
             String[] split = line.split("\t");
             index++;

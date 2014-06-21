@@ -24,14 +24,16 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Fact-table object of <a href="http://en.wikipedia.org/wiki/Star_schema">Star Schema</a>.
+ * Fact table object of <a href="http://en.wikipedia.org/wiki/Star_schema">Star Schema</a>. It hold detail data and 
+ * need use huge memories of course.
+ * 
  * @author mengran
  *
  */
 public class FactTable {
     
     private Meta meta;
-    private Map<Long, Record> records;
+    private Map<Integer, Record> records;
     private Collection<Record> recordList;
     
     private static class Meta {
@@ -47,18 +49,23 @@ public class FactTable {
         
     }
     
+    /**
+     * Holding detail data, streaming calculation target object.
+     * @author mengran
+     *
+     */
     public class Record {
         
-        private Long id;
+        private Integer id;     // Equal to PK
         private List<Long> dimOfFact = new ArrayList<Long>();
         private List<BigDecimal> indOfFact = new ArrayList<BigDecimal>();
         
-        private Record(Long id) {
+        private Record(Integer id) {
             super();
             this.id = id;
         }
         
-        public Long getId() {
+        public Integer getId() {
             
             return id;
         }
@@ -88,19 +95,27 @@ public class FactTable {
         // Internal
         Meta meta = new Meta();
         meta.name = name;
-        Map<Long, Record> records = new HashMap<Long, FactTable.Record>();
+        Map<Integer, Record> records = new HashMap<Integer, FactTable.Record>();
         
         this.meta = meta;
         this.records = records;
     }
     
+    /**
+     * Builder pattern class for {@link FactTable}, chain model begin with {{@link #build(String)} 
+     * and end with {{@link #done()}.
+     * 
+     * @author mengran
+     *
+     */
     public static class FactTableBuilder {
         private static final ThreadLocal<FactTable> IN_BUILDING = new ThreadLocal<FactTable>();
         
         public FactTableBuilder build(String name) {
             
             if (IN_BUILDING.get() != null) {
-                throw new IllegalStateException("Previous building " + IN_BUILDING.get() + " is doing call #done to finish it.");
+                throw new IllegalStateException("Previous building " + IN_BUILDING.get()
+                    + " is doing call #done to finish it.");
             }
             // FIXME: Check name?
             
@@ -138,7 +153,7 @@ public class FactTable {
             return this;
         }
         
-        public FactTableBuilder addDimDatas(Long primaryKey, List<Long> dimDatas) {
+        public FactTableBuilder addDimDatas(Integer primaryKey, List<Long> dimDatas) {
             
             FactTable current = IN_BUILDING.get();
             if (current == null) {
@@ -154,7 +169,7 @@ public class FactTable {
             return this;
         }
         
-        public FactTableBuilder addIndDatas(Long primaryKey, List<BigDecimal> indDatas) {
+        public FactTableBuilder addIndDatas(Integer primaryKey, List<BigDecimal> indDatas) {
             
             FactTable current = IN_BUILDING.get();
             if (current == null) {
@@ -177,6 +192,8 @@ public class FactTable {
                 throw new IllegalStateException("Current building is not started, call #build first.");
             }
             
+            // FIXME: Check valid or not
+            
             IN_BUILDING.set(null);
             current.recordList = Collections.unmodifiableCollection(current.records.values());
             
@@ -184,12 +201,16 @@ public class FactTable {
         }
     }
     
+    /**
+     * @return Unmodifiable records.
+     * @see Collections#unmodifiableCollection(Collection)
+     */
     public Collection<Record> getRecords() {
         return recordList;
     }
 
     /**
-     * Indicate index by search {{@link #meta}.
+     * Indicate index by search {{@link #meta}, high performance is very important.
      * @param indName Indicate names 
      * @return indicate index in fact-table
      * @throws IllegalArgumentException if indicate names is empty or invalid.
@@ -205,7 +226,7 @@ public class FactTable {
     }
     
     /**
-     * Dimension index by search {{@link #meta}.
+     * Dimension index by search {{@link #meta}, high performance is very important.
      * @param dimName Dimension names 
      * @return dimension index in fact-table
      * @throws IllegalArgumentException if indicate names is empty or invalid.

@@ -62,7 +62,7 @@ public class BootPerformanceController {
         Resource resource = new FileSystemResource(dataFile);
         BufferedReader reader = new BufferedReader(new InputStreamReader(resource.getInputStream()));
         String line = null;
-        Long index = 0L;
+        Integer index = 0;
         while ((line = reader.readLine()) != null) {
             String[] split = line.split("\t");
             index++;
@@ -78,7 +78,7 @@ public class BootPerformanceController {
         reader.close();
         LOGGER.info("prepare - end: {}, {}ms", System.currentTimeMillis(), System.currentTimeMillis() - startTime);
         
-        LOGGER.info("Forkjoin pool size {}" + Runtime.getRuntime().availableProcessors());
+        LOGGER.info("Forkjoin pool size {}", Runtime.getRuntime().availableProcessors());
         
         miniCube = new MiniCube(builder.done());
         return cubeName + " OK.";
