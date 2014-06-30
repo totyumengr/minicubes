@@ -38,6 +38,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.totyumengr.minicubes.core.FactTable.FactTableBuilder;
 
 /**
+ * 
  * @author mengran
  *
  */

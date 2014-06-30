@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.github.totyumengr</groupId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.1</version>
 	<packaging>jar</packaging>
 
 	<name>minicubes-core</name>
@@ -57,14 +57,14 @@
 		</dependency>
 	</dependencies>
 	<artifactId>minicubes-core</artifactId>
-	
+
 	<repositories>
 		<repository>
 			<id>spring.ext-release-local</id>
 			<url>http://repo.spring.io/ext-release-local</url>
 		</repository>
 	</repositories>
-	
+
 	<profiles>
 		<profile>
 			<id>standalone</id>
@@ -79,6 +79,27 @@
 						<artifactId>spring-boot-maven-plugin</artifactId>
 						<configuration>
 							<mainClass>com.github.totyumengr.minicubes.core.Application</mainClass>
+						</configuration>
+					</plugin>
+
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-install-plugin</artifactId>
+						<executions>
+							<execution>
+								<phase>install</phase>
+								<goals>
+									<goal>install-file</goal>
+								</goals>
+							</execution>
+						</executions>
+						<configuration>
+							<file>${project.build.directory}/${project.build.finalName}.${project.packaging}</file>
+							<artifactId>${artifactId}</artifactId>
+							<groupId>${groupId}</groupId>
+							<version>${version}</version>
+							<packaging>jar</packaging>
+							<classifier>standalone</classifier>
 						</configuration>
 					</plugin>
 				</plugins>
