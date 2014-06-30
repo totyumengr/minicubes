@@ -33,6 +33,9 @@ import java.util.Map;
 public class FactTable {
     
     private Meta meta;
+    /**
+     * For speeding {@link FactTableBuilder}, clear after {@link FactTableBuilder#done()}.
+     */
     private Map<Integer, Record> records;
     private Collection<Record> recordList;
     
@@ -56,8 +59,14 @@ public class FactTable {
      */
     public class Record {
         
-        private Integer id;     // Equal to PK
+        private Integer id;     // Equal to PK. Can hold 2^31 records.
+        /**
+         * FIXME: Use integer for less memory usage? 2^31-1 maybe not enough.
+         */
         private List<Long> dimOfFact = new ArrayList<Long>();
+        /**
+         * FIXME: Use double for better performance? Precision is problem.
+         */
         private List<BigDecimal> indOfFact = new ArrayList<BigDecimal>();
         
         private Record(Integer id) {
@@ -95,10 +104,9 @@ public class FactTable {
         // Internal
         Meta meta = new Meta();
         meta.name = name;
-        Map<Integer, Record> records = new HashMap<Integer, FactTable.Record>();
         
         this.meta = meta;
-        this.records = records;
+        this.records = new HashMap<Integer, FactTable.Record>(0);;
     }
     
     /**
@@ -196,6 +204,7 @@ public class FactTable {
             
             IN_BUILDING.set(null);
             current.recordList = Collections.unmodifiableCollection(current.records.values());
+            current.records = new HashMap<Integer, Record>(0);
             
             return current;
         }
@@ -242,7 +251,7 @@ public class FactTable {
 
     @Override
     public String toString() {
-        return "FactTable [meta=" + meta + ", records=" + records + "]";
+        return "FactTable [meta=" + meta + ", records=" + recordList + "]";
     }
     
 }

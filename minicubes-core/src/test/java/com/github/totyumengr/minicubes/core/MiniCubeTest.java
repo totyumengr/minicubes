@@ -149,4 +149,11 @@ public class MiniCubeTest {
         }
     }
     
+    @Test
+    public void test_2_3_Zero_BigDecimail() throws Throwable {
+        
+        BigDecimal zero = new BigDecimal(0).setScale(8, BigDecimal.ROUND_HALF_UP);
+        System.out.println(zero);
+    }
+    
 }

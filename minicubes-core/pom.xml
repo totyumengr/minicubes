@@ -3,7 +3,8 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.github.totyumengr</groupId>
-	<version>0.0.1-SNAPSHOT</version>
+	<artifactId>minicubes-core</artifactId>
+	<version>0.0.2-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<name>minicubes-core</name>
@@ -18,7 +19,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>1.0.2.RELEASE</version>
+		<version>1.1.4.RELEASE</version>
 	</parent>
 
 	<!-- Package as an executable jar -->
@@ -31,6 +32,32 @@
 					<argLine>-Xmx1024m</argLine>
 				</configuration>
 			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<goals>
+							<goal>jar-no-fork</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<artifactId>maven-jar-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>test-jar</id>
+						<phase>package</phase>
+						<goals>
+							<goal>test-jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
 
@@ -38,10 +65,6 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-jdbc</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -55,16 +78,23 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-tomcat</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.codahale.metrics</groupId>
+			<artifactId>metrics-core</artifactId>
+		</dependency>
 	</dependencies>
-	<artifactId>minicubes-core</artifactId>
-	
+
 	<repositories>
 		<repository>
 			<id>spring.ext-release-local</id>
 			<url>http://repo.spring.io/ext-release-local</url>
 		</repository>
 	</repositories>
-	
+
 	<profiles>
 		<profile>
 			<id>standalone</id>
@@ -81,6 +111,27 @@
 							<mainClass>com.github.totyumengr.minicubes.core.Application</mainClass>
 						</configuration>
 					</plugin>
+
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-install-plugin</artifactId>
+						<executions>
+							<execution>
+								<phase>install</phase>
+								<goals>
+									<goal>install-file</goal>
+								</goals>
+							</execution>
+						</executions>
+						<configuration>
+							<file>${project.build.directory}/${project.build.finalName}.${project.packaging}</file>
+							<artifactId>${artifactId}</artifactId>
+							<groupId>${groupId}</groupId>
+							<version>${version}</version>
+							<packaging>jar</packaging>
+							<classifier>standalone</classifier>
+						</configuration>
+					</plugin>
 				</plugins>
 			</build>
 		</profile>
@@ -90,6 +141,15 @@
 				<activeByDefault>false</activeByDefault>
 			</activation>
 			<build>
+				<!-- exclude some resources -->
+				<resources>
+					<resource>
+						<directory>src/main/resources</directory>
+						<excludes>
+							<exclude>logback.xml</exclude>
+						</excludes>
+					</resource>
+				</resources>
 				<plugins>
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
