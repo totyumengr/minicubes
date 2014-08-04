@@ -20,7 +20,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Define supported calculation operations.
+ * <p>FIXME: Need re-design aggregations API, make it fluent and rich for calculating.
+ * 
+ * <p>Define supported calculation operations.
  * @author mengran
  *
  */
@@ -56,4 +58,5 @@ public interface Aggregations {
      * @return result of sum operation
      */
     Map<Long, BigDecimal> sum(String indName, String groupByDimName, Map<String, List<Long>> filterDims);
+    
 }

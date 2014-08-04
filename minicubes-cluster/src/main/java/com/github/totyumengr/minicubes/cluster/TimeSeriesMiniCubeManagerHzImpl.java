@@ -22,6 +22,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
@@ -463,7 +465,7 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
         public BigDecimal call() throws Exception {
             
             LOGGER.info("Sum on {}", instance.getCluster().getLocalMember());
-            return impl.miniCube == null ? new BigDecimal(0): impl.miniCube.sum(indName, filterDims);
+            return impl.miniCube == null ? new BigDecimal(0) : impl.miniCube.sum(indName, filterDims);
         }
         
     }
@@ -504,12 +506,82 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
             AGG_CONTEXT.remove();
         }
     }
+    
+    /**
+     * FIXME: Need re-design
+     * @author mengran
+     *
+     */
+    private static class Sum2 implements Callable<Map<Long, BigDecimal>>, HazelcastInstanceAware {
+
+        private HazelcastInstance instance;
+        private TimeSeriesMiniCubeManagerHzImpl impl;
+        
+        private String indName;
+        private Map<String, List<Long>> filterDims;
+        private String groupDimName;
+        
+        public Sum2(String indName, String groupDimName, Map<String, List<Long>> filterDims) {
+            super();
+            this.indName = indName;
+            this.filterDims = filterDims;
+            this.groupDimName = groupDimName;
+        }
+
+        @Override
+        public void setHazelcastInstance(HazelcastInstance hazelcastInstance) {
+            this.instance = hazelcastInstance;
+            impl = (TimeSeriesMiniCubeManagerHzImpl) instance.getUserContext().get("this");
+        }
+
+        @Override
+        public Map<Long, BigDecimal> call() throws Exception {
+            
+            LOGGER.info("Sum on {}", instance.getCluster().getLocalMember());
+            return impl.miniCube == null ? null : impl.miniCube.sum(indName, groupDimName, filterDims);
+        }
+        
+    }
 
     @Override
     public Map<Long, BigDecimal> sum(String indName, String groupByDimName,
             Map<String, List<Long>> filterDims) {
-        // TODO Auto-generated method stub
-        return null;
+        
+        Set<String> cubeIds = new LinkedHashSet<String>();
+        try {
+            String[] timeSeries = AGG_CONTEXT.get();
+            if (timeSeries == null || timeSeries.length == 0) {
+                cubeIds.addAll(allCubeIds());
+            } else {
+                for (String t : timeSeries) {
+                    cubeIds.addAll(cubeIds(t));
+                }
+                if (cubeIds.isEmpty()) {
+                    throw new IllegalArgumentException("Can not find availd cubes for given time series "
+                            + ObjectUtils.getDisplayString(timeSeries));
+                }
+            }
+            LOGGER.info("Agg on cubes {}", ObjectUtils.getDisplayString(cubeIds));
+            
+            // Do execute
+            List<Map<Long, BigDecimal>> results = execute(new Sum2(indName, groupByDimName, filterDims), 
+                    cubeIds, hzExecutorTimeout);
+            LOGGER.debug("Group {} on {} with filter {} results is {}", indName, cubeIds, filterDims, results);
+            
+            Map<Long, BigDecimal> result = new HashMap<Long, BigDecimal>();
+            results.stream().forEach(new Consumer<Map<Long, BigDecimal>>() {
+
+                @Override
+                public void accept(Map<Long, BigDecimal> t) {
+                    t.forEach((k, v) -> result.merge(k, v, BigDecimal::add));
+                }
+            });
+            LOGGER.info("Sum {} on {} with filter {} results is {}", indName, cubeIds, filterDims, result);
+            
+            return result;
+        } finally {
+            AGG_CONTEXT.remove();
+        }
     }
     
 }

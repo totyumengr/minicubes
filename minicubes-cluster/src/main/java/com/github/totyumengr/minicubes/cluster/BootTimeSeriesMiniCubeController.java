@@ -88,4 +88,19 @@ public class BootTimeSeriesMiniCubeController {
         
         return sum;
     }
+    
+    @RequestMapping(value="/groupsum", method=RequestMethod.POST)
+    public @ResponseBody Map<Long, BigDecimal> groupsum(@NotBlank @RequestParam String indName, 
+            @RequestParam(required=false) String filterDims,
+            @RequestParam(required=false) String groupbyDim,
+            @NotBlank @RequestParam String... timeSeries) throws Throwable {
+        
+        LOGGER.info("Try to sum {} on {} with filter {}.", indName, ObjectUtils.getDisplayString(timeSeries), filterDims);
+        Map<String, List<Long>> filter = (filterDims == null || "".equals(filterDims)) ? null
+                : objectMapper.readValue(filterDims, new TypeReference<Map<String, List<Long>>>() {});
+        Map<Long, BigDecimal> sum = manager.aggs(timeSeries).sum(indName, groupbyDim, filter);
+        LOGGER.info("Sucess to sum {} on {} result is {}.", indName, timeSeries, sum);
+        
+        return sum;
+    }
 }
