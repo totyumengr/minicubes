@@ -41,11 +41,10 @@ import com.github.totyumengr.minicubes.core.FactTable.Record;
  * @author mengran
  *
  */
-public class MiniCube {
+public class MiniCube implements Aggregations {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(MiniCube.class);
     
-    public static final int IND_SCALE = 8;
     public static final long DUMMY_FILTER_DIM = -999999999L;
     
     private FactTable factTable;
@@ -86,6 +85,7 @@ public class MiniCube {
      * @param indName indicate name for sum
      * @return result that formated using {@value #IND_SCALE}
      */
+    @Override
     public BigDecimal sum(String indName) {
         
         // Delegate to overload method
@@ -101,6 +101,7 @@ public class MiniCube {
      * @param filterDims filter dimensions
      * @return result that formated using {@value #IND_SCALE}
      */
+    @Override
     public BigDecimal sum(String indName, Map<String, List<Long>> filterDims) {
         
         long enterTime = System.currentTimeMillis();
@@ -122,7 +123,8 @@ public class MiniCube {
         return sum;
     }
     
-    public Map<Long, BigDecimal> group(String indName, String groupByDimName, Map<String, List<Long>> filterDims) {
+    @Override
+    public Map<Long, BigDecimal> sum(String indName, String groupByDimName, Map<String, List<Long>> filterDims) {
         
         long enterTime = System.currentTimeMillis();
         Stream<Record> stream = filter(indName, filterDims);

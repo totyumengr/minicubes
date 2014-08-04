@@ -23,6 +23,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Fact table object of <a href="http://en.wikipedia.org/wiki/Star_schema">Star Schema</a>. It hold detail data and 
  * need use huge memories of course.
@@ -31,6 +34,8 @@ import java.util.Map;
  *
  */
 public class FactTable {
+    
+    private static final Logger LOGGER = LoggerFactory.getLogger(FactTable.class);
     
     private Meta meta;
     /**
@@ -205,6 +210,10 @@ public class FactTable {
             IN_BUILDING.set(null);
             current.recordList = Collections.unmodifiableCollection(current.records.values());
             current.records = new HashMap<Integer, Record>(0);
+            
+            LOGGER.info("Build completed: name {} with {} dimension columns, {} measure columns and {} records.", 
+                    current.meta.name, current.meta.dimNames.size(), current.meta.indNames.size(), 
+                    current.recordList.size());
             
             return current;
         }

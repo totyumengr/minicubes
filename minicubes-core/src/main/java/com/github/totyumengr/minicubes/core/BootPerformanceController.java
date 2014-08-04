@@ -101,7 +101,7 @@ public class BootPerformanceController {
         Map<String, List<Long>> filterDims = objectMapper.readValue(filterJson, new TypeReference<Map<String, List<Long>>>() {});
         LOGGER.info("Parse json filter to {}", filterDims);
         
-        Map<Long, BigDecimal> group = miniCube.group(indName, groupByDimName, filterDims);
+        Map<Long, BigDecimal> group = miniCube.sum(indName, groupByDimName, filterDims);
         return group;
     }
 }

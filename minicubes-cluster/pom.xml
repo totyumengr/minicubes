@@ -3,16 +3,18 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.github.totyumengr</groupId>
-	<artifactId>minicubes-core</artifactId>
-	<version>0.0.2-SNAPSHOT</version>
+	<artifactId>minicubes-cluster</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
-	<name>minicubes-core</name>
+	<name>minicubes-cluster</name>
 	<url>https://github.com/totyumengr</url>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<java.version>1.8</java.version>
+		<minicubes.core.version>0.0.2-SNAPSHOT</minicubes.core.version>
+		<hazelcast.version>3.2.3</hazelcast.version>
 	</properties>
 
 	<!-- Inherit defaults from Spring Boot -->
@@ -21,21 +23,6 @@
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>1.1.4.RELEASE</version>
 	</parent>
-
-	<dependencies>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
-		</dependency>
-	</dependencies>
 
 	<!-- Package as an executable jar -->
 	<build>
@@ -47,34 +34,29 @@
 					<argLine>-Xmx1024m</argLine>
 				</configuration>
 			</plugin>
-
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-source-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>attach-sources</id>
-						<goals>
-							<goal>jar-no-fork</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-
-			<plugin>
-				<artifactId>maven-jar-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>test-jar</id>
-						<phase>package</phase>
-						<goals>
-							<goal>test-jar</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
 		</plugins>
 	</build>
+
+	<dependencies>
+		<dependency>
+			<groupId>com.github.totyumengr</groupId>
+			<artifactId>minicubes-core</artifactId>
+			<version>${minicubes.core.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.hazelcast</groupId>
+			<artifactId>hazelcast</artifactId>
+			<version>${hazelcast.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-jdbc</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+		</dependency>
+	</dependencies>
 
 	<repositories>
 		<repository>
@@ -93,39 +75,30 @@
 			<dependencies>
 				<dependency>
 					<groupId>org.springframework.boot</groupId>
-					<artifactId>spring-boot-starter-tomcat</artifactId>
+					<artifactId>spring-boot-starter</artifactId>
 				</dependency>
 				<dependency>
 					<groupId>org.springframework.boot</groupId>
-					<artifactId>spring-boot-starter-actuator</artifactId>
+					<artifactId>spring-boot-starter-test</artifactId>
 				</dependency>
 				<dependency>
-					<groupId>com.codahale.metrics</groupId>
-					<artifactId>metrics-core</artifactId>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-web</artifactId>
+				</dependency>
+				<dependency>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-tomcat</artifactId>
 				</dependency>
 			</dependencies>
 
 			<build>
 				<finalName>${artifactId}-standalone-${version}</finalName>
-
-				<!-- Filter some resources -->
-				<resources>
-					<resource>
-						<directory>src/main/resources</directory>
-						<includes>
-							<include>*.xml</include>
-							<include>*.properties</include>
-						</includes>
-						<filtering>true</filtering>
-					</resource>
-				</resources>
-
 				<plugins>
 					<plugin>
 						<groupId>org.springframework.boot</groupId>
 						<artifactId>spring-boot-maven-plugin</artifactId>
 						<configuration>
-							<mainClass>com.github.totyumengr.minicubes.core.Application</mainClass>
+							<mainClass>com.github.totyumengr.minicubes.cluster.Application</mainClass>
 						</configuration>
 					</plugin>
 
@@ -158,16 +131,6 @@
 				<activeByDefault>false</activeByDefault>
 			</activation>
 			<build>
-				<!-- exclude some resources -->
-				<resources>
-					<resource>
-						<directory>src/main/resources</directory>
-						<excludes>
-							<exclude>logback.xml</exclude>
-							<exclude>application.properties</exclude>
-						</excludes>
-					</resource>
-				</resources>
 				<plugins>
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>

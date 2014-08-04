@@ -116,7 +116,7 @@ public class MiniCubeTest {
             3204L, 3203L, 3202L, 3201L, 3211L}));
         
         for (int i = 0; i < 5; i++) {
-            Map<Long, BigDecimal> group = miniCube.group("csm", "tradeId", filter);
+            Map<Long, BigDecimal> group = miniCube.sum("csm", "tradeId", filter);
             Assert.assertEquals("543138.14000000", group.get(3201L).toString());
             Assert.assertEquals("8994005.53000000", group.get(3202L).toString());
             Assert.assertEquals("7236913.98000000", group.get(3203L).toString());
@@ -138,7 +138,7 @@ public class MiniCubeTest {
     public void test_2_2_Group_tradeId() throws Throwable {
         
         for (int i = 0; i < 5; i++) {
-            Map<Long, BigDecimal> group = miniCube.group("csm", "tradeId", null);
+            Map<Long, BigDecimal> group = miniCube.sum("csm", "tradeId", null);
             Assert.assertEquals(210, group.size());
             Assert.assertEquals("274795.77600000", group.get(-1L).toString());
             Assert.assertEquals("108080.82000000", group.get(3099L).toString());
