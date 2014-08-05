@@ -15,6 +15,7 @@
  */
 package com.github.totyumengr.minicubes.cluster;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -285,8 +286,13 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
         return result;
     }
     
-    private static class Assign implements Callable<String>, HazelcastInstanceAware {
+    private static class Assign implements Callable<String>, HazelcastInstanceAware, Serializable {
 
+        /**
+         * 
+         */
+        private static final long serialVersionUID = 1L;
+        
         private transient HazelcastInstance instance;
         private transient TimeSeriesMiniCubeManagerHzImpl impl;
         
@@ -441,10 +447,15 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
         return this;
     }
     
-    private static class Sum implements Callable<BigDecimal>, HazelcastInstanceAware {
+    private static class Sum implements Callable<BigDecimal>, HazelcastInstanceAware, Serializable {
 
-        private HazelcastInstance instance;
-        private TimeSeriesMiniCubeManagerHzImpl impl;
+        /**
+         * 
+         */
+        private static final long serialVersionUID = 1L;
+        
+        private transient HazelcastInstance instance;
+        private transient TimeSeriesMiniCubeManagerHzImpl impl;
         
         private String indName;
         private Map<String, List<Long>> filterDims;
@@ -512,10 +523,15 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
      * @author mengran
      *
      */
-    private static class Sum2 implements Callable<Map<Long, BigDecimal>>, HazelcastInstanceAware {
+    private static class Sum2 implements Callable<Map<Long, BigDecimal>>, HazelcastInstanceAware, Serializable {
 
-        private HazelcastInstance instance;
-        private TimeSeriesMiniCubeManagerHzImpl impl;
+        /**
+         * 
+         */
+        private static final long serialVersionUID = 1L;
+        
+        private transient HazelcastInstance instance;
+        private transient TimeSeriesMiniCubeManagerHzImpl impl;
         
         private String indName;
         private Map<String, List<Long>> filterDims;
