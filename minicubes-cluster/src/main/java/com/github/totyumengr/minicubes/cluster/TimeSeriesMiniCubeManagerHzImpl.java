@@ -268,7 +268,7 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
         }
         
         try {
-            cdl.await(hzExecutorTimeout, TimeUnit.SECONDS);
+            cdl.await(timeoutSeconds > 0 ? timeoutSeconds : Integer.MAX_VALUE, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             // Ignore
         }
