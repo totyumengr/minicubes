@@ -75,7 +75,7 @@ public class BootTimeSeriesMiniCubeController {
         return newCubeId;
     }
     
-    @RequestMapping(value="/sum", method=RequestMethod.POST)
+    @RequestMapping(value="/sum", method={RequestMethod.POST, RequestMethod.GET})
     public @ResponseBody BigDecimal sum(@NotBlank @RequestParam String indName, 
             @RequestParam(required=false) String filterDims,
             @NotBlank @RequestParam String... timeSeries) throws Throwable {
@@ -89,7 +89,7 @@ public class BootTimeSeriesMiniCubeController {
         return sum;
     }
     
-    @RequestMapping(value="/groupsum", method=RequestMethod.POST)
+    @RequestMapping(value="/groupsum", method={RequestMethod.POST, RequestMethod.GET})
     public @ResponseBody Map<Long, BigDecimal> groupsum(@NotBlank @RequestParam String indName, 
             @RequestParam(required=false) String filterDims,
             @RequestParam(required=false) String groupbyDim,

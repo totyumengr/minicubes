@@ -142,7 +142,7 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
             joinConfig.setMulticastConfig(new MulticastConfig().setEnabled(true));
         } else {
             joinConfig.setMulticastConfig(new MulticastConfig().setEnabled(false))
-                .setTcpIpConfig(new TcpIpConfig().addMember(hzMembers));
+                .setTcpIpConfig(new TcpIpConfig().setEnabled(true).addMember(hzMembers));
         }
         hazelcastConfig.setNetworkConfig(new NetworkConfig().setJoin(joinConfig));
         
