@@ -60,6 +60,7 @@ import com.hazelcast.config.ExecutorConfig;
 import com.hazelcast.config.GroupConfig;
 import com.hazelcast.config.JoinConfig;
 import com.hazelcast.config.ListenerConfig;
+import com.hazelcast.config.ManagementCenterConfig;
 import com.hazelcast.config.MulticastConfig;
 import com.hazelcast.config.NetworkConfig;
 import com.hazelcast.config.TcpIpConfig;
@@ -125,9 +126,15 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
         
         Config hazelcastConfig = new Config("minicubes-cluster");
         hazelcastConfig.setProperty("hazelcast.system.log.enabled", "false");
+        hazelcastConfig.setProperty("hazelcast.logging.type", "slf4j");
         
         hazelcastConfig.setGroupConfig(new GroupConfig(hzGroupName = env.getRequiredProperty("hazelcast.group.name"), 
                 env.getRequiredProperty("hazelcast.group.password")));
+        if (StringUtils.hasText(env.getRequiredProperty("hazelcast.mancenter.url"))) {
+            hazelcastConfig.setManagementCenterConfig(new ManagementCenterConfig()
+                .setEnabled(true)
+                .setUrl(env.getRequiredProperty("hazelcast.mancenter.url")));
+        }
         String hzMembers;
         JoinConfig joinConfig = new JoinConfig();
         if (!StringUtils.hasText(hzMembers = env.getRequiredProperty("hazelcast.members"))) {

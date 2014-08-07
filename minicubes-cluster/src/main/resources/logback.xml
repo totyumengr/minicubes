@@ -10,12 +10,13 @@
 
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
       <!-- rollover daily -->
-      <fileNamePattern>logs/${project.name}-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+      <fileNamePattern>logs/minicubes-cluster.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
       <timeBasedFileNamingAndTriggeringPolicy
           class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
         <!-- or whenever the file size reaches 64 MB -->
         <maxFileSize>64 MB</maxFileSize>
       </timeBasedFileNamingAndTriggeringPolicy>
+      <maxHistory>7</maxHistory>
     </rollingPolicy>
 
     <!-- Safely log to the same file from multiple JVMs. Degrades performance! -->
