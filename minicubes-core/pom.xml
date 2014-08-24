@@ -1,5 +1,4 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.github.totyumengr</groupId>
@@ -22,6 +21,13 @@
 		<version>1.1.4.RELEASE</version>
 	</parent>
 
+	<scm>
+		<connection>scm:git:git://github.com/totyumengr/minicubes.git</connection>
+		<url>http://github.com/totyumengr/minicubes</url>
+		<developerConnection>scm:git:git@github.com:totyumengr/minicubes.git</developerConnection>
+		<tag>minicubes-core-0.0.2</tag>
+	</scm>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -32,14 +38,33 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.googlecode.javaewah</groupId>
+			<artifactId>JavaEWAH</artifactId>
+			<version>0.8.11</version>
+		</dependency>
+		<dependency>
+			<groupId>com.foundationdb</groupId>
+			<artifactId>fdb-sql-parser</artifactId>
+			<version>1.3.0</version>
 		</dependency>
 	</dependencies>
 
 	<!-- Package as an executable jar -->
 	<build>
 		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-release-plugin</artifactId>
+			</plugin>
+			
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
@@ -83,104 +108,4 @@
 		</repository>
 	</repositories>
 
-	<profiles>
-		<profile>
-			<id>standalone</id>
-			<activation>
-				<activeByDefault>true</activeByDefault>
-			</activation>
-
-			<dependencies>
-				<dependency>
-					<groupId>org.springframework.boot</groupId>
-					<artifactId>spring-boot-starter-tomcat</artifactId>
-				</dependency>
-				<dependency>
-					<groupId>org.springframework.boot</groupId>
-					<artifactId>spring-boot-starter-actuator</artifactId>
-				</dependency>
-				<dependency>
-					<groupId>com.codahale.metrics</groupId>
-					<artifactId>metrics-core</artifactId>
-				</dependency>
-			</dependencies>
-
-			<build>
-				<finalName>${artifactId}-standalone-${version}</finalName>
-
-				<!-- Filter some resources -->
-				<resources>
-					<resource>
-						<directory>src/main/resources</directory>
-						<includes>
-							<include>*.xml</include>
-							<include>*.properties</include>
-						</includes>
-						<filtering>true</filtering>
-					</resource>
-				</resources>
-
-				<plugins>
-					<plugin>
-						<groupId>org.springframework.boot</groupId>
-						<artifactId>spring-boot-maven-plugin</artifactId>
-						<configuration>
-							<mainClass>com.github.totyumengr.minicubes.core.Application</mainClass>
-						</configuration>
-					</plugin>
-
-					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-install-plugin</artifactId>
-						<executions>
-							<execution>
-								<phase>install</phase>
-								<goals>
-									<goal>install-file</goal>
-								</goals>
-							</execution>
-						</executions>
-						<configuration>
-							<file>${project.build.directory}/${project.build.finalName}.${project.packaging}</file>
-							<artifactId>${artifactId}</artifactId>
-							<groupId>${groupId}</groupId>
-							<version>${version}</version>
-							<packaging>jar</packaging>
-							<classifier>standalone</classifier>
-						</configuration>
-					</plugin>
-				</plugins>
-			</build>
-		</profile>
-		<profile>
-			<id>pure</id>
-			<activation>
-				<activeByDefault>false</activeByDefault>
-			</activation>
-			<build>
-				<!-- exclude some resources -->
-				<resources>
-					<resource>
-						<directory>src/main/resources</directory>
-						<excludes>
-							<exclude>logback.xml</exclude>
-							<exclude>application.properties</exclude>
-						</excludes>
-					</resource>
-				</resources>
-				<plugins>
-					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-compiler-plugin</artifactId>
-						<configuration>
-							<excludes>
-								<exclude>**/Application.java</exclude>
-								<exclude>**/Boot*.java</exclude>
-							</excludes>
-						</configuration>
-					</plugin>
-				</plugins>
-			</build>
-		</profile>
-	</profiles>
 </project>
