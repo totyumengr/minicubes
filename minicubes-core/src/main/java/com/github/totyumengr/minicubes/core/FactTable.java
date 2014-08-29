@@ -25,6 +25,7 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.Assert;
 
 /**
  * Fact table object of <a href="http://en.wikipedia.org/wiki/Star_schema">Star Schema</a>. It hold detail data and 
@@ -97,6 +98,14 @@ public class FactTable {
             return dim;
         }
 
+        List<Long> getDimOfFact() {
+            return dimOfFact;
+        }
+
+        List<BigDecimal> getIndOfFact() {
+            return indOfFact;
+        }
+
         @Override
         public String toString() {
             return "Record [id=" + id + ", dimOfFact=" + dimOfFact + ", indOfFact=" + indOfFact
@@ -109,6 +118,7 @@ public class FactTable {
         // Internal
         Meta meta = new Meta();
         meta.name = name;
+        Assert.hasText(name, "Fact-table name can not empty.");
         
         this.meta = meta;
         this.records = new HashMap<Integer, FactTable.Record>(0);;
@@ -257,7 +267,15 @@ public class FactTable {
         }
         return index;
     }
-
+    
+    /**
+     * @return dimension counts
+     */
+    Collection<String> getDims() {
+        
+        return meta.dimNames.keySet();
+    }
+    
     @Override
     public String toString() {
         return "FactTable [meta=" + meta + ", records=" + recordList + "]";

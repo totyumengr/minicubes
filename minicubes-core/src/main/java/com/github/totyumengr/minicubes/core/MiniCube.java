@@ -17,17 +17,25 @@ package com.github.totyumengr.minicubes.core;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.IntConsumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.roaringbitmap.RoaringBitmap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.StopWatch;
 
 import com.github.totyumengr.minicubes.core.FactTable.Record;
 
@@ -38,16 +46,30 @@ import com.github.totyumengr.minicubes.core.FactTable.Record;
  * 
  * <p>{@link MiniCube} design for easily fast transfer between cluster nodes to support fail-safe feature.
  * 
+ * <p>Add bitmap index for speed up aggregated calculation, use <a href="https://github.com/lemire/RoaringBitmap">RoaringBitmap</a>.
+ * 
  * @author mengran
+ * 
+ * @see #DUMMY_FILTER_DIM
  *
  */
 public class MiniCube implements Aggregations {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(MiniCube.class);
     
+    /**
+     * Take care this value, make sure do not has this values in data-set.
+     */
     public static final long DUMMY_FILTER_DIM = -999999999L;
     
     private FactTable factTable;
+    
+    /**
+     * Bitmap index for speed up aggregated calculation
+     */
+    private Map<String, RoaringBitmap> bitmapIndex = new HashMap<String, RoaringBitmap>();
+    
+    private volatile int bitmapIndexStatus = 0;
 
     // FIXME: Add dimension table
     public MiniCube(FactTable factTable) {
@@ -55,21 +77,100 @@ public class MiniCube implements Aggregations {
         this.factTable = factTable;
     }
     
+    // ---------------------------- Bitmap API ----------------------------
+    public int buildBitmapIndex() {
+        
+        if (bitmapIndexStatus == 0) {
+            // Means not have index, set building status
+            bitmapIndexStatus = 1;
+            
+            final Collection<String> dimensionNames = factTable.getDims();
+            StopWatch stopWatch = new StopWatch();
+            stopWatch.start();
+            factTable.getRecords().stream().forEach(new Consumer<Record>() {
+
+                @Override
+                public void accept(Record t) {
+                    for (String dimName : dimensionNames) {
+                        Long dimValue = t.getDim(dimName);
+                        String bitMapkey = dimName + ":" + dimValue;
+                        RoaringBitmap bitmap = bitmapIndex.get(bitMapkey);
+                        if (bitmap == null) {
+                            bitmap = new RoaringBitmap();
+                            bitmapIndex.put(bitMapkey, bitmap);
+                        }
+                        bitmap.add(t.getId());
+                    }
+                }
+                
+            });
+            stopWatch.stop();
+            LOGGER.info("Builded bitmap index use {} ms", stopWatch.getTotalTimeMillis());
+            // Build successfully
+            bitmapIndexStatus = 2;
+        }
+        
+        return bitmapIndexStatus;
+    }
+    
+    // ---------------------------- Aggregation API ----------------------------
+    
     private Stream<Record> filter(String indName, Map<String, List<Long>> filterDims) {
         
         if (filterDims == null) {
             filterDims = new HashMap<String, List<Long>>(0);
         }
+        
         List<Predicate<Record>> filters = new ArrayList<Predicate<Record>>(filterDims.size());
-        for (Entry<String, List<Long>> entry : filterDims.entrySet()) {
-            String key = entry.getKey();
-            List<Long> value = entry.getValue();
-            Predicate<Record> filter = a -> a.getDim(key) == DUMMY_FILTER_DIM;
-            for (Long v : value) {
-                final long l = (long) v;
-                filter = filter.or(a -> a.getDim(key) == l);
+        // Add dispatch logic for bitmap index
+        if (bitmapIndexStatus == 2) {
+            RoaringBitmap ands = null;
+            for (Entry<String, List<Long>> entry : filterDims.entrySet()) {
+                RoaringBitmap ors = new RoaringBitmap();
+                for (Long v : entry.getValue()) {
+                    RoaringBitmap o = bitmapIndex.get(entry.getKey() + ":" + v);
+                    if (o != null) {
+                        ors.or(o);
+                    } else {
+                        throw new IllegalArgumentException("Can not find bitmap index for " + entry.getKey() + ":" + v);
+                    }
+                }
+                if (ands == null) {
+                    ands = ors;
+                } else {
+                    ands.and(ors);
+                }
             }
-            filters.add(filter);
+            if (ands != null) {
+                int[] idArray = ands.toArray();
+                Set<Integer> ids = new HashSet<Integer>(idArray.length);
+                Arrays.stream(idArray).forEach(new IntConsumer() {
+                    @Override
+                    public void accept(int value) {
+                        ids.add(value);
+                    }
+                });
+                LOGGER.info("Filter record IDs count {}", ids.size());
+                Predicate<Record> filter = a -> a.getId() == new Long(DUMMY_FILTER_DIM).intValue();
+                filter = filter.or(new Predicate<Record>() {
+                    @Override
+                    public boolean test(Record t) {
+                        return ids.contains(t.getId());
+                    }
+                });
+                filters.add(filter);
+            }
+        } else {
+            for (Entry<String, List<Long>> entry : filterDims.entrySet()) {
+                String key = entry.getKey();
+                List<Long> value = entry.getValue();
+                Predicate<Record> filter = a -> a.getDim(key) == DUMMY_FILTER_DIM;
+                for (Long v : value) {
+                    final long l = (long) v;
+                    filter = filter.or(a -> a.getDim(key) == l);
+                }
+                filters.add(filter);
+            }
         }
         
         Predicate<Record> andFilter = a -> a.getId() != DUMMY_FILTER_DIM;
@@ -91,8 +192,6 @@ public class MiniCube implements Aggregations {
         // Delegate to overload method
         return sum(indName, null);
     }
-    
-    // ---------- Calculation API ----------
     
     /**
      * Sum calculation of given indicate with filter. It equal to "SELECT SUM({indName}) FROM {fact table of cube} WHERE 

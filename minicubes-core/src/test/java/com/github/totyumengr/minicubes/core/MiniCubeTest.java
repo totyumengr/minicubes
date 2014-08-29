@@ -80,7 +80,7 @@ public class MiniCubeTest {
     }
     
     @Test
-    public void test1_1_Sum_20140606() throws Throwable {
+    public void test_1_1_Sum_20140606() throws Throwable {
         
         Map<String, List<Long>> filter = new HashMap<String, List<Long>>(1);
         filter.put("the_date", Arrays.asList(new Long[] {20140606L}));
@@ -91,7 +91,7 @@ public class MiniCubeTest {
     }
     
     @Test
-    public void test1_2_Sum_filter_tradeId() throws Throwable {
+    public void test_1_2_Sum_filter_tradeId() throws Throwable {
         
         Map<String, List<Long>> filter = new HashMap<String, List<Long>>(1);
         filter.put("tradeId", Arrays.asList(new Long[] {
@@ -154,6 +154,40 @@ public class MiniCubeTest {
         
         BigDecimal zero = new BigDecimal(0).setScale(8, BigDecimal.ROUND_HALF_UP);
         System.out.println(zero);
+    }
+    
+    @Test
+    public void test_3_1_BitmapIndex_Sum_20140606() throws Throwable {
+        
+        // Start to build bitmap index
+        Assert.assertEquals(2, miniCube.buildBitmapIndex());
+        
+        Map<String, List<Long>> filter = new HashMap<String, List<Long>>(1);
+        filter.put("the_date", Arrays.asList(new Long[] {20140606L}));
+        for (int i = 0; i < 3; i++) {
+            Assert.assertEquals("138240687.91500000", miniCube.sum("csm", filter).toString());
+            Thread.sleep(1000L);
+        }
+    }
+    
+    @Test
+    public void test_3_2_BitmapIndex_Sum_filter_tradeId() throws Throwable {
+        
+        // Start to build bitmap index
+        Assert.assertEquals(2, miniCube.buildBitmapIndex());
+        
+        Map<String, List<Long>> filter = new HashMap<String, List<Long>>(1);
+        filter.put("tradeId", Arrays.asList(new Long[] {
+            3205L, 3206L, 3207L, 3208L, 3209L, 3210L, 3212L, 3299L, 
+            3204L, 3203L, 3202L, 3201L, 3211L}));
+        LOGGER.info(new ObjectMapper().writeValueAsString(filter));
+        
+        
+        for (int i = 0; i < 5; i++) {
+            Assert.assertEquals("41612111.56000000", miniCube.sum("csm", filter).toString());
+            Thread.sleep(1000L);
+        }
+        
     }
     
 }
