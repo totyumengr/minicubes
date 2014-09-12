@@ -40,18 +40,23 @@ import org.springframework.util.StopWatch;
 import com.github.totyumengr.minicubes.core.FactTable.Record;
 
 /**
- * In-memory cube base on java8 stream feature and use memory calculation for best performance(millisecond level).
- * Distributed architect is important, {@link MiniCube} design as unit participant, the one logic level cube will 
- * be API for users.
+ * In-memory cube base on java8 stream feature and use memory calculation for
+ * best performance(millisecond level). Distributed architect is important,
+ * {@link MiniCube} design as unit participant, the one logic level cube will be
+ * API for users.
  * 
- * <p>{@link MiniCube} design for easily fast transfer between cluster nodes to support fail-safe feature.
+ * <p>
+ * {@link MiniCube} design for easily fast transfer between cluster nodes to
+ * support fail-safe feature.
  * 
- * <p>Add bitmap index for speed up aggregated calculation, use <a href="https://github.com/lemire/RoaringBitmap">RoaringBitmap</a>.
+ * <p>
+ * Add bitmap index for speed up aggregated calculation, use <a
+ * href="https://github.com/lemire/RoaringBitmap">RoaringBitmap</a>.
  * 
  * @author mengran
  * 
  * @see #DUMMY_FILTER_DIM
- *
+ * 
  */
 public class MiniCube implements Aggregations {
     
@@ -70,7 +75,7 @@ public class MiniCube implements Aggregations {
     private Map<String, RoaringBitmap> bitmapIndex = new HashMap<String, RoaringBitmap>();
     
     private volatile int bitmapIndexStatus = 0;
-
+    
     // FIXME: Add dimension table
     public MiniCube(FactTable factTable) {
         super();
@@ -88,7 +93,7 @@ public class MiniCube implements Aggregations {
             StopWatch stopWatch = new StopWatch();
             stopWatch.start();
             factTable.getRecords().stream().forEach(new Consumer<Record>() {
-
+                
                 @Override
                 public void accept(Record t) {
                     for (String dimName : dimensionNames) {
@@ -180,10 +185,13 @@ public class MiniCube implements Aggregations {
         
         return factTable.getRecords().parallelStream().filter(andFilter);
     }
-
+    
     /**
-     * Sum calculation of given indicate with filter. It equal to "SELECT SUM({indName}) FROM {fact table of cube}".
-     * @param indName indicate name for sum
+     * Sum calculation of given indicate with filter. It equal to
+     * "SELECT SUM({indName}) FROM {fact table of cube}".
+     * 
+     * @param indName
+     *            indicate name for sum
      * @return result that formated using {@value #IND_SCALE}
      */
     @Override
@@ -194,10 +202,14 @@ public class MiniCube implements Aggregations {
     }
     
     /**
-     * Sum calculation of given indicate with filter. It equal to "SELECT SUM({indName}) FROM {fact table of cube} WHERE 
-     * {dimension1 IN (a, b, c)} AND {dimension2 IN (d, e, f)}".
-     * @param indName indicate name for sum
-     * @param filterDims filter dimensions
+     * Sum calculation of given indicate with filter. It equal to "SELECT
+     * SUM({indName}) FROM {fact table of cube} WHERE {dimension1 IN (a, b, c)}
+     * AND {dimension2 IN (d, e, f)}".
+     * 
+     * @param indName
+     *            indicate name for sum
+     * @param filterDims
+     *            filter dimensions
      * @return result that formated using {@value #IND_SCALE}
      */
     @Override
@@ -241,7 +253,12 @@ public class MiniCube implements Aggregations {
             System.currentTimeMillis() - enterTime);
         return group;
     }
-
+    
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#toString()
+     */
     @Override
     public String toString() {
         return "MiniCube [factTable=" + factTable + "]";
