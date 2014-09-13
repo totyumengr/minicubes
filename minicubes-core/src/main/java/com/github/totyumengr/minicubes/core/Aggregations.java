@@ -47,7 +47,7 @@ public interface Aggregations {
      * @param filterDims filter dimensions
      * @return result of sum operation
      */
-    BigDecimal sum(String indName, Map<String, List<Long>> filterDims);
+    BigDecimal sum(String indName, Map<String, List<Integer>> filterDims);
     
     /**
      * Sum calculation of given indicate with filter and grouper. It equal to "SELECT SUM({indName}) FROM {fact table of cube} WHERE 
@@ -57,6 +57,6 @@ public interface Aggregations {
      * @param filterDims filter dimensions
      * @return result of sum operation
      */
-    Map<Long, BigDecimal> sum(String indName, String groupByDimName, Map<String, List<Long>> filterDims);
+    Map<Integer, BigDecimal> sum(String indName, String groupByDimName, Map<String, List<Integer>> filterDims);
     
 }

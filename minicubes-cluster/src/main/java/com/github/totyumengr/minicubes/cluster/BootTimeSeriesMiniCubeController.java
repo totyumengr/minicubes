@@ -81,8 +81,8 @@ public class BootTimeSeriesMiniCubeController {
             @NotBlank @RequestParam String... timeSeries) throws Throwable {
         
         LOGGER.info("Try to sum {} on {} with filter {}.", indName, ObjectUtils.getDisplayString(timeSeries), filterDims);
-        Map<String, List<Long>> filter = (filterDims == null || "".equals(filterDims)) ? null
-                : objectMapper.readValue(filterDims, new TypeReference<Map<String, List<Long>>>() {});
+        Map<String, List<Integer>> filter = (filterDims == null || "".equals(filterDims)) ? null
+                : objectMapper.readValue(filterDims, new TypeReference<Map<String, List<Integer>>>() {});
         BigDecimal sum = manager.aggs(timeSeries).sum(indName, filter);
         LOGGER.info("Sucess to sum {} on {} result is {}.", indName, timeSeries, sum);
         
@@ -90,15 +90,15 @@ public class BootTimeSeriesMiniCubeController {
     }
     
     @RequestMapping(value="/groupsum", method={RequestMethod.POST, RequestMethod.GET})
-    public @ResponseBody Map<Long, BigDecimal> groupsum(@NotBlank @RequestParam String indName, 
+    public @ResponseBody Map<Integer, BigDecimal> groupsum(@NotBlank @RequestParam String indName, 
             @RequestParam(required=false) String filterDims,
             @RequestParam(required=false) String groupbyDim,
             @NotBlank @RequestParam String... timeSeries) throws Throwable {
         
         LOGGER.info("Try to sum {} on {} with filter {}.", indName, ObjectUtils.getDisplayString(timeSeries), filterDims);
-        Map<String, List<Long>> filter = (filterDims == null || "".equals(filterDims)) ? null
-                : objectMapper.readValue(filterDims, new TypeReference<Map<String, List<Long>>>() {});
-        Map<Long, BigDecimal> sum = manager.aggs(timeSeries).sum(indName, groupbyDim, filter);
+        Map<String, List<Integer>> filter = (filterDims == null || "".equals(filterDims)) ? null
+                : objectMapper.readValue(filterDims, new TypeReference<Map<String, List<Integer>>>() {});
+        Map<Integer, BigDecimal> sum = manager.aggs(timeSeries).sum(indName, groupbyDim, filter);
         LOGGER.info("Sucess to sum {} on {} result is {}.", indName, timeSeries, sum);
         
         return sum;

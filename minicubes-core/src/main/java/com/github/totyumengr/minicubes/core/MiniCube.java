@@ -17,16 +17,13 @@ package com.github.totyumengr.minicubes.core;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.function.Function;
-import java.util.function.IntConsumer;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import md.math.DoubleDouble;
@@ -58,7 +55,7 @@ public class MiniCube implements Aggregations {
     /**
      * Take care this value, make sure do not has this values in data-set.
      */
-    public static final long DUMMY_FILTER_DIM = -999999999L;
+    public static final int DUMMY_FILTER_DIM = -999999999;
     
     FactTable factTable;
 
@@ -70,23 +67,23 @@ public class MiniCube implements Aggregations {
     
     // ---------------------------- Aggregation API ----------------------------
     
-    private Stream<Record> filter(String indName, Map<String, List<Long>> filterDims) {
+    private Stream<Entry<Integer, Record>> filter(String indName, Map<String, List<Integer>> filterDims) {
         
         if (filterDims == null) {
-            filterDims = new HashMap<String, List<Long>>(0);
+            filterDims = new HashMap<String, List<Integer>>(0);
         }
         
-        List<Predicate<Record>> filters = new ArrayList<Predicate<Record>>(filterDims.size());
-        // Add dispatch logic for bitmap index
+        List<Predicate<Entry<Integer, Record>>> filters = new ArrayList<Predicate<Entry<Integer, Record>>>(filterDims.size());
+        
         RoaringBitmap ands = null;
-        for (Entry<String, List<Long>> entry : filterDims.entrySet()) {
+        for (Entry<String, List<Integer>> entry : filterDims.entrySet()) {
             RoaringBitmap ors = new RoaringBitmap();
-            for (Long v : entry.getValue()) {
+            for (Integer v : entry.getValue()) {
                 RoaringBitmap o = factTable.bitmapIndex.get(entry.getKey() + ":" + v);
                 if (o != null) {
                     ors.or(o);
                 } else {
-                    throw new IllegalArgumentException("Can not find bitmap index for " + entry.getKey() + ":" + v);
+                    LOGGER.debug("Can not find bitmap index for " + entry.getKey() + ":" + v);
                 }
             }
             if (ands == null) {
@@ -96,31 +93,38 @@ public class MiniCube implements Aggregations {
             }
         }
         if (ands != null) {
-            int[] idArray = ands.toArray();
-            Set<Integer> ids = new HashSet<Integer>(idArray.length);
-            Arrays.stream(idArray).forEach(new IntConsumer() {
-                @Override
-                public void accept(int value) {
-                    ids.add(value);
-                }
-            });
-            LOGGER.info("Filter record IDs count {}", ids.size());
-            Predicate<Record> filter = a -> a.getId() == new Long(DUMMY_FILTER_DIM).intValue();
-            filter = filter.or(new Predicate<Record>() {
-                @Override
-                public boolean test(Record t) {
-                    return ids.contains(t.getId());
-                }
-            });
-            filters.add(filter);
+            // FIXME: Always false. 
+            if (ands.getCardinality() > Integer.MAX_VALUE) {
+                throw new UnsupportedOperationException();
+//                for (Entry<String, List<Integer>> entry : filterDims.entrySet()) {
+//                    String key = entry.getKey();
+//                    List<Integer> value = entry.getValue();
+//                    Predicate<Record> filter = a -> a.getDim(key) == DUMMY_FILTER_DIM;
+//                    for (Integer v : value) {
+//                        filter = filter.or(a -> a.getDim(key) == v);
+//                    }
+//                    filters.add(filter);
+//                 }
+            } else {
+                final RoaringBitmap m = ands;
+                Stream<Entry<Integer, Record>> stream = factTable.getRecords().entrySet().parallelStream().filter(new Predicate<Entry<Integer, Record>>() {
+
+                    @Override
+                    public boolean test(Entry<Integer, Record> t) {
+                        return m.contains(t.getKey());
+                    }
+                });
+                LOGGER.info("Filter record IDs count {}", ands.getCardinality());
+                return stream;
+            }
         }
         
-        Predicate<Record> andFilter = a -> a.getId() != DUMMY_FILTER_DIM;
-        for (Predicate<Record> filter : filters) {
+        Predicate<Entry<Integer, Record>> andFilter = i -> i.getKey() != DUMMY_FILTER_DIM;
+        for (Predicate<Entry<Integer, Record>> filter : filters) {
             andFilter = andFilter.and(filter);
         }
         
-        return factTable.getRecords().parallelStream().filter(andFilter);
+        return factTable.getRecords().entrySet().parallelStream().filter(andFilter);
     }
 
     /**
@@ -143,18 +147,18 @@ public class MiniCube implements Aggregations {
      * @return result that formated using {@value #IND_SCALE}
      */
     @Override
-    public BigDecimal sum(String indName, Map<String, List<Long>> filterDims) {
+    public BigDecimal sum(String indName, Map<String, List<Integer>> filterDims) {
         
         long enterTime = System.currentTimeMillis();
         
-        Stream<Record> stream = filter(indName, filterDims);
+        Stream<Entry<Integer, Record>> stream = filter(indName, filterDims);
         LOGGER.debug("Prepare predicate using {}ms.", System.currentTimeMillis() - enterTime);
         
         DoubleDouble sum = stream.map(
-            new Function<Record, DoubleDouble>() {
+            new Function<Entry<Integer, Record>, DoubleDouble>() {
                 @Override
-                public DoubleDouble apply(Record t) {
-                    return t.getInd(indName);
+                public DoubleDouble apply(Entry<Integer, Record> t) {
+                    return t.getValue().getInd(indName);
                 }
             }).reduce(new DoubleDouble(0), (x, y) -> x.add(y));
         LOGGER.info("Sum {} filter {} result {} using {} ms.", indName, filterDims, sum, 
@@ -164,24 +168,23 @@ public class MiniCube implements Aggregations {
     }
     
     @Override
-    public Map<Long, BigDecimal> sum(String indName, String groupByDimName, Map<String, List<Long>> filterDims) {
+    public Map<Integer, BigDecimal> sum(String indName, String groupByDimName, Map<String, List<Integer>> filterDims) {
         
-        throw new UnsupportedOperationException();
-//        long enterTime = System.currentTimeMillis();
-//        Stream<Record> stream = filter(indName, filterDims);
-//        
-//        Map<Long, BigDecimal> group = new HashMap<Long, BigDecimal>();
-//        stream.collect(Collectors.groupingBy(p->p.getDim(groupByDimName), Collectors.reducing(new DoubleDouble(), 
-//                new Function<Record, DoubleDouble>() {
-//                    @Override
-//                    public DoubleDouble apply(Record t) {
-//                        return t.getInd(indName);
-//                    }
-//                }, (x, y) -> x.add(y))))
-//            .forEach((k, v) -> group.put(k, new BigDecimal(v.toSciNotation()).setScale(IND_SCALE, BigDecimal.ROUND_HALF_UP)));
-//        LOGGER.info("Group by {} sum {} filter {} result {} using {} ms.", groupByDimName, indName, filterDims, group, 
-//            System.currentTimeMillis() - enterTime);
-//        return group;
+        long enterTime = System.currentTimeMillis();
+        Stream<Entry<Integer, Record>> stream = filter(indName, filterDims);
+        
+        Map<Integer, BigDecimal> group = new HashMap<Integer, BigDecimal>();
+        stream.collect(Collectors.groupingBy(p->p.getValue().getDim(groupByDimName), Collectors.reducing(new DoubleDouble(), 
+                new Function<Entry<Integer, Record>, DoubleDouble>() {
+                    @Override
+                    public DoubleDouble apply(Entry<Integer, Record> t) {
+                        return t.getValue().getInd(indName);
+                    }
+                }, (x, y) -> x.add(y))))
+            .forEach((k, v) -> group.put(k, new BigDecimal(v.toSciNotation()).setScale(IND_SCALE, BigDecimal.ROUND_HALF_UP)));
+        LOGGER.info("Group by {} sum {} filter {} result {} using {} ms.", groupByDimName, indName, filterDims, group, 
+            System.currentTimeMillis() - enterTime);
+        return group;
     }
 
     @Override

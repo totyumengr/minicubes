@@ -47,7 +47,6 @@ public class FactTable {
      * For speeding {@link FactTableBuilder}, clear after {@link FactTableBuilder#done()}.
      */
     private Map<Integer, Record> records;
-    private Collection<Record> recordList;
     
     /**
      * Bitmap index for speed up aggregated calculation
@@ -75,37 +74,33 @@ public class FactTable {
      */
     public class Record {
         
-        private Integer id;     // Equal to PK. Can hold 2^31 records.
+        private int id;     // Equal to PK. Can hold 2^31 records.
         /**
          * Use DoubleDouble for better performance. See http://tsusiatsoftware.net/dd/main.html
          */
-        private List<DoubleDouble> indOfFact = new ArrayList<DoubleDouble>();
+        private DoubleDouble[] indOfFact = null;
+        
+        private int[] dimOfFact = null;
         
         private Record(Integer id) {
             super();
             this.id = id;
         }
         
-        public Integer getId() {
-            
+        public int getId() {
             return id;
         }
 
         public DoubleDouble getInd(String indName) {
             
             int index = FactTable.this.getIndIndex(indName);
-            return indOfFact.get(index - meta.indStartIndex);
+            return indOfFact[index - meta.indStartIndex];
         }
         
-//        public Long getDim(String dimName) {
-//            
-//            int index = FactTable.this.getDimIndex(dimName);
-//            long dim = dimOfFact.get(index);
-//            return dim;
-//        }
-
-        List<DoubleDouble> getIndOfFact() {
-            return indOfFact;
+        public int getDim(String dimName) {
+            
+            final int index = FactTable.this.getDimIndex(dimName);
+            return dimOfFact[index];
         }
 
         @Override
@@ -167,6 +162,11 @@ public class FactTable {
                 current.meta.columnNames.add(dimColumnNames.get(i));
             }
             
+            // Because Integer.MAX_VALUE is 2147483647
+            if (current.meta.columnNames.size() > 21) {
+                throw new IllegalStateException("Current version only support 20 dimensions max.");
+            }
+            
             return this;
         }
         
@@ -196,7 +196,7 @@ public class FactTable {
             return this;
         }
         
-        public FactTableBuilder addDimDatas(Integer primaryKey, List<Long> dimDatas) {
+        public FactTableBuilder addDimDatas(Integer primaryKey, List<Integer> dimDatas) {
             
             FactTable current = IN_BUILDING.get();
             if (current == null) {
@@ -215,7 +215,7 @@ public class FactTable {
             
             // Build bitmap index
             for (int i = 0; i < dimDatas.size(); i++) {
-                Long dimValue = dimDatas.get(i);
+                Integer dimValue = dimDatas.get(i);
                 String bitMapkey = current.meta.columnNames.get(i) + ":" + dimValue;
                 RoaringBitmap bitmap = current.bitmapIndex.get(bitMapkey);
                 if (bitmap == null) {
@@ -223,6 +223,12 @@ public class FactTable {
                     current.bitmapIndex.put(bitMapkey, bitmap);
                 }
                 bitmap.add(record.getId());
+                
+                // Index dimension value
+                if (record.dimOfFact == null) {
+                    record.dimOfFact = new int[current.meta.indStartIndex];
+                }
+                record.dimOfFact[i] = dimValue;
             }
             
             return this;
@@ -239,7 +245,7 @@ public class FactTable {
                 record = current.new Record(primaryKey);
                 current.records.put(primaryKey, record);
             }
-            record.indOfFact.addAll(indDatas);
+            record.indOfFact = indDatas.toArray(new DoubleDouble[0]);
             
             return this;
         }
@@ -252,8 +258,8 @@ public class FactTable {
             }
 
             IN_BUILDING.set(null);
-            current.recordList = Collections.unmodifiableCollection(current.records.values());
-            current.records = new HashMap<Integer, Record>(0);
+//            current.recordList = Collections.unmodifiableCollection(current.records.values());
+//            current.records = new HashMap<Integer, Record>(0);
             
             // FIXME: Check valid or not
             current.meta.columnNames.stream().forEach(new Consumer<String>() {
@@ -269,7 +275,7 @@ public class FactTable {
             }
             LOGGER.info("Build completed: name {} with {} dimension columns, {} measure columns and {} records, {} indexes.", 
                     current.meta.name, current.meta.indStartIndex, current.meta.columnNames.size() - current.meta.indStartIndex, 
-                    current.recordList.size(), current.bitmapIndex.size());
+                    current.records.size(), current.bitmapIndex.size());
             
             return current;
         }
@@ -279,8 +285,8 @@ public class FactTable {
      * @return Unmodifiable records.
      * @see Collections#unmodifiableCollection(Collection)
      */
-    public Collection<Record> getRecords() {
-        return recordList;
+    Map<Integer, Record> getRecords() {
+        return records;
     }
 
     /**
@@ -316,7 +322,7 @@ public class FactTable {
     
     @Override
     public String toString() {
-        return "FactTable [meta=" + meta + ", records=" + recordList + "]";
+        return "FactTable [meta=" + meta + ", records=" + records + "]";
     }
     
 }

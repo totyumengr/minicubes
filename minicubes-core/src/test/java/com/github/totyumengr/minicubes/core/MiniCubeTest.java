@@ -18,7 +18,6 @@ package com.github.totyumengr.minicubes.core;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
-import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -37,7 +36,6 @@ import org.springframework.core.io.ClassPathResource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.totyumengr.minicubes.core.FactTable.FactTableBuilder;
-import com.github.totyumengr.minicubes.core.FactTable.Record;
 
 /**
  * @author mengran
@@ -71,8 +69,8 @@ public class MiniCubeTest {
             if (index % 100000 == 0) {
                 LOGGER.debug("Load {} records", index);
             }
-            builder.addDimDatas(index, Arrays.asList(new Long[] {
-                Long.valueOf(split[0]), Long.valueOf(split[1]), Long.valueOf(split[2]), Long.valueOf(split[3])}));
+            builder.addDimDatas(index, Arrays.asList(new Integer[] {
+                Integer.valueOf(split[0]), Integer.valueOf(split[1]), Integer.valueOf(split[2]), Integer.valueOf(split[3])}));
             builder.addIndDatas(index, Arrays.asList(new DoubleDouble[] {
                 new DoubleDouble(split[4]), new DoubleDouble(split[5]), 
                     new DoubleDouble(split[6]), new DoubleDouble(split[7])}));
@@ -86,8 +84,8 @@ public class MiniCubeTest {
     @Test
     public void test_1_1_Sum_20140606() throws Throwable {
         
-        Map<String, List<Long>> filter = new HashMap<String, List<Long>>(1);
-        filter.put("the_date", Arrays.asList(new Long[] {20140606L}));
+        Map<String, List<Integer>> filter = new HashMap<String, List<Integer>>(1);
+        filter.put("the_date", Arrays.asList(new Integer[] {20140606}));
         for (int i = 0; i < 3; i++) {
             Assert.assertEquals("138240687.91500000", miniCube.sum("csm", filter).toString());
             Thread.sleep(1000L);
@@ -97,10 +95,10 @@ public class MiniCubeTest {
     @Test
     public void test_1_2_Sum_filter_tradeId() throws Throwable {
         
-        Map<String, List<Long>> filter = new HashMap<String, List<Long>>(1);
-        filter.put("tradeId", Arrays.asList(new Long[] {
-            3205L, 3206L, 3207L, 3208L, 3209L, 3210L, 3212L, 3299L, 
-            3204L, 3203L, 3202L, 3201L, 3211L}));
+        Map<String, List<Integer>> filter = new HashMap<String, List<Integer>>(1);
+        filter.put("tradeId", Arrays.asList(new Integer[] {
+            3205, 3206, 3207, 3208, 3209, 3210, 3212, 3299, 
+            3204, 3203, 3202, 3201, 3211}));
         LOGGER.info(new ObjectMapper().writeValueAsString(filter));
         
         
@@ -111,44 +109,44 @@ public class MiniCubeTest {
         
     }
     
-//    @Test
+    @Test
     public void test_2_1_Group_tradeId_filter_tradeId() throws Throwable {
         
-        Map<String, List<Long>> filter = new HashMap<String, List<Long>>(1);
-        filter.put("tradeId", Arrays.asList(new Long[] {
-            3205L, 3206L, 3207L, 3208L, 3209L, 3210L, 3212L, 3299L, 
-            3204L, 3203L, 3202L, 3201L, 3211L}));
+        Map<String, List<Integer>> filter = new HashMap<String, List<Integer>>(1);
+        filter.put("tradeId", Arrays.asList(new Integer[] {
+            3205, 3206, 3207, 3208, 3209, 3210, 3212, 3299, 
+            3204, 3203, 3202, 3201, 3211}));
         
         for (int i = 0; i < 5; i++) {
-            Map<Long, BigDecimal> group = miniCube.sum("csm", "tradeId", filter);
-            Assert.assertEquals("543138.14000000", group.get(3201L).toString());
-            Assert.assertEquals("8994005.53000000", group.get(3202L).toString());
-            Assert.assertEquals("7236913.98000000", group.get(3203L).toString());
-            Assert.assertEquals("4711386.93000000", group.get(3299L).toString());
-            Assert.assertEquals("5060157.38000000", group.get(3204L).toString());
-            Assert.assertEquals("1878194.96000000", group.get(3205L).toString());
-            Assert.assertEquals("2366059.53000000", group.get(3206L).toString());
-            Assert.assertEquals("2831228.01000000", group.get(3207L).toString());
-            Assert.assertEquals("302801.76000000", group.get(3208L).toString());
-            Assert.assertEquals("759776.22000000", group.get(3209L).toString());
-            Assert.assertEquals("6359417.21000000", group.get(3210L).toString());
-            Assert.assertEquals("355185.79000000", group.get(3211L).toString());
-            Assert.assertEquals("213846.12000000", group.get(3212L).toString());
+            Map<Integer, BigDecimal> group = miniCube.sum("csm", "tradeId", filter);
+            Assert.assertEquals("543138.14000000", group.get(3201).toString());
+            Assert.assertEquals("8994005.53000000", group.get(3202).toString());
+            Assert.assertEquals("7236913.98000000", group.get(3203).toString());
+            Assert.assertEquals("4711386.93000000", group.get(3299).toString());
+            Assert.assertEquals("5060157.38000000", group.get(3204).toString());
+            Assert.assertEquals("1878194.96000000", group.get(3205).toString());
+            Assert.assertEquals("2366059.53000000", group.get(3206).toString());
+            Assert.assertEquals("2831228.01000000", group.get(3207).toString());
+            Assert.assertEquals("302801.76000000", group.get(3208).toString());
+            Assert.assertEquals("759776.22000000", group.get(3209).toString());
+            Assert.assertEquals("6359417.21000000", group.get(3210).toString());
+            Assert.assertEquals("355185.79000000", group.get(3211).toString());
+            Assert.assertEquals("213846.12000000", group.get(3212).toString());
             Thread.sleep(1000L);
         }
     }
     
-//    @Test
+    @Test
     public void test_2_2_Group_tradeId() throws Throwable {
         
         for (int i = 0; i < 5; i++) {
-            Map<Long, BigDecimal> group = miniCube.sum("csm", "tradeId", null);
+            Map<Integer, BigDecimal> group = miniCube.sum("csm", "tradeId", null);
             Assert.assertEquals(210, group.size());
-            Assert.assertEquals("274795.77600000", group.get(-1L).toString());
-            Assert.assertEquals("108080.82000000", group.get(3099L).toString());
-            Assert.assertEquals("72360.92000000", group.get(3004L).toString());
-            Assert.assertEquals("31828.81000000", group.get(502L).toString());
-            Assert.assertEquals("50708.85000000", group.get(505L).toString());
+            Assert.assertEquals("274795.77600000", group.get(-1).toString());
+            Assert.assertEquals("108080.82000000", group.get(3099).toString());
+            Assert.assertEquals("72360.92000000", group.get(3004).toString());
+            Assert.assertEquals("31828.81000000", group.get(502).toString());
+            Assert.assertEquals("50708.85000000", group.get(505).toString());
             Thread.sleep(1000L);
         }
     }
@@ -163,8 +161,8 @@ public class MiniCubeTest {
     @Test
     public void test_3_1_BitmapIndex_Sum_20140606() throws Throwable {
         
-        Map<String, List<Long>> filter = new HashMap<String, List<Long>>(1);
-        filter.put("the_date", Arrays.asList(new Long[] {20140606L}));
+        Map<String, List<Integer>> filter = new HashMap<String, List<Integer>>(1);
+        filter.put("the_date", Arrays.asList(new Integer[] {20140606}));
         for (int i = 0; i < 3; i++) {
             Assert.assertEquals("138240687.91500000", miniCube.sum("csm", filter).toString());
             Thread.sleep(1000L);
@@ -174,10 +172,10 @@ public class MiniCubeTest {
     @Test
     public void test_3_2_BitmapIndex_Sum_filter_tradeId() throws Throwable {
         
-        Map<String, List<Long>> filter = new HashMap<String, List<Long>>(1);
-        filter.put("tradeId", Arrays.asList(new Long[] {
-            3205L, 3206L, 3207L, 3208L, 3209L, 3210L, 3212L, 3299L, 
-            3204L, 3203L, 3202L, 3201L, 3211L}));
+        Map<String, List<Integer>> filter = new HashMap<String, List<Integer>>(1);
+        filter.put("tradeId", Arrays.asList(new Integer[] {
+            3205, 3206, 3207, 3208, 3209, 3210, 3212, 3299, 
+            3204, 3203, 3202, 3201, 3211}));
         LOGGER.info(new ObjectMapper().writeValueAsString(filter));
         
         
@@ -191,12 +189,7 @@ public class MiniCubeTest {
     @Test
     public void test_4_1_DoubleDouble_Sum_20140606() throws Throwable {
         
-        DoubleDouble dd = new DoubleDouble();
-        for (Record r : miniCube.factTable.getRecords()) {
-            dd = dd.add(DoubleDouble.valueOf(r.getInd("csm").toString()));
-        }
-        
-        Assert.assertEquals("138240687.91500000", new DecimalFormat("##0.00000000").format(dd.doubleValue()));
+        Assert.assertEquals("138240687.91500000", miniCube.sum("csm").toString());
     }
     
 }

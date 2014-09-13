@@ -24,5 +24,6 @@ MiniCubes是一个高性能、分布式、内存型OLAP计算引擎。设计上�
 * 使用[Bitmap Index](https://github.com/lemire/RoaringBitmap "compressed bitset")来增强部分聚集方法性能。
 * 使用[DoubleDouble](http://tsusiatsoftware.net/dd/main.html "DoubleDouble")替换Java.math.BigDecimal来降低内存占用。
 
-## 数据：
+## 数据（物理机12核，内存128G）：
 * 8G内存中可以存放26788234条记录（5个维度和4个指标），这些原始数据大小应该在1.5G。
+* 

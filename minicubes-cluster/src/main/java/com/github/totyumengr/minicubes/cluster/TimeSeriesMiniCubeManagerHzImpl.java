@@ -32,6 +32,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -129,6 +131,8 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
      */
     private transient MiniCube miniCube;
     
+    private ScheduledExecutorService handleNewMember = Executors.newSingleThreadScheduledExecutor();
+    
     @Bean
     public HazelcastInstance hazelcastServer() {
         
@@ -196,7 +200,13 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
         instance.getUserContext().put("this", TimeSeriesMiniCubeManagerHzImpl.this);
         
         // Handle new member
-        handleNewMember(instance, instance.getCluster().getLocalMember());
+        handleNewMember.schedule(new Runnable() {
+                @Override
+                public void run() {
+                    LOGGER.info("Handle new member {} came in after 1 minute.", instance.getCluster().getLocalMember());
+                    handleNewMember(instance, instance.getCluster().getLocalMember());
+                }
+            }, 60, TimeUnit.SECONDS);
         
         return instance;
     }
@@ -416,11 +426,11 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
                             }
                             
                             // Add fact data
-                            List<Long> dimDatas = new ArrayList<Long>(actualSplitIndex.get());
+                            List<Integer> dimDatas = new ArrayList<Integer>(actualSplitIndex.get());
                             List<DoubleDouble> indDatas = new ArrayList<DoubleDouble>(rs.getMetaData().getColumnCount() - dimDatas.size());
                             for (int i = 0; i < rs.getMetaData().getColumnCount(); i++) {
                                 if (i < actualSplitIndex.get()) {
-                                    dimDatas.add(rs.getLong(i + 1));
+                                    dimDatas.add(rs.getInt(i + 1));
                                 } else {
                                     indDatas.add(DoubleDouble.valueOf(rs.getDouble(i + 1)));
                                 }
@@ -512,9 +522,9 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
         private transient TimeSeriesMiniCubeManagerHzImpl impl;
         
         private String indName;
-        private Map<String, List<Long>> filterDims;
+        private Map<String, List<Integer>> filterDims;
         
-        public Sum(String indName, Map<String, List<Long>> filterDims) {
+        public Sum(String indName, Map<String, List<Integer>> filterDims) {
             super();
             this.indName = indName;
             this.filterDims = filterDims;
@@ -542,7 +552,7 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
     }
 
     @Override
-    public BigDecimal sum(String indName, Map<String, List<Long>> filterDims) {
+    public BigDecimal sum(String indName, Map<String, List<Integer>> filterDims) {
         
         Set<String> cubeIds = new LinkedHashSet<String>();
         try {
@@ -577,7 +587,7 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
      * @author mengran
      *
      */
-    private static class Sum2 implements Callable<Map<Long, BigDecimal>>, HazelcastInstanceAware, Serializable {
+    private static class Sum2 implements Callable<Map<Integer, BigDecimal>>, HazelcastInstanceAware, Serializable {
 
         /**
          * 
@@ -588,10 +598,10 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
         private transient TimeSeriesMiniCubeManagerHzImpl impl;
         
         private String indName;
-        private Map<String, List<Long>> filterDims;
+        private Map<String, List<Integer>> filterDims;
         private String groupDimName;
         
-        public Sum2(String indName, String groupDimName, Map<String, List<Long>> filterDims) {
+        public Sum2(String indName, String groupDimName, Map<String, List<Integer>> filterDims) {
             super();
             this.indName = indName;
             this.filterDims = filterDims;
@@ -605,7 +615,7 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
         }
 
         @Override
-        public Map<Long, BigDecimal> call() throws Exception {
+        public Map<Integer, BigDecimal> call() throws Exception {
             
             LOGGER.info("Sum on {}", instance.getCluster().getLocalMember());
             return impl.miniCube == null ? null : impl.miniCube.sum(indName, groupDimName, filterDims);
@@ -614,8 +624,8 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
     }
 
     @Override
-    public Map<Long, BigDecimal> sum(String indName, String groupByDimName,
-            Map<String, List<Long>> filterDims) {
+    public Map<Integer, BigDecimal> sum(String indName, String groupByDimName,
+            Map<String, List<Integer>> filterDims) {
         
         Set<String> cubeIds = new LinkedHashSet<String>();
         try {
@@ -634,15 +644,15 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
             LOGGER.info("Agg on cubes {}", ObjectUtils.getDisplayString(cubeIds));
             
             // Do execute
-            List<Map<Long, BigDecimal>> results = execute(new Sum2(indName, groupByDimName, filterDims), 
+            List<Map<Integer, BigDecimal>> results = execute(new Sum2(indName, groupByDimName, filterDims), 
                     cubeIds, hzExecutorTimeout);
             LOGGER.debug("Group {} on {} with filter {} results is {}", indName, cubeIds, filterDims, results);
             
-            Map<Long, BigDecimal> result = new HashMap<Long, BigDecimal>();
-            results.stream().forEach(new Consumer<Map<Long, BigDecimal>>() {
+            Map<Integer, BigDecimal> result = new HashMap<Integer, BigDecimal>();
+            results.stream().forEach(new Consumer<Map<Integer, BigDecimal>>() {
 
                 @Override
-                public void accept(Map<Long, BigDecimal> t) {
+                public void accept(Map<Integer, BigDecimal> t) {
                     t.forEach((k, v) -> result.merge(k, v, BigDecimal::add));
                 }
             });
