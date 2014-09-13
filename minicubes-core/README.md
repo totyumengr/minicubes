@@ -1,9 +1,3 @@
-# 介绍
+# TODO
 
-本模块提供内存型Cube的操作接口，设计目标就是：高性能（利用Java8 Parallel Stream）。
-
-# 性能
-
-机器情况：12核，内存够大（去除GC的影响）；数据量：1000w条。
-* sum：~300ms（1并发）；~1000ms（5并发）；
-* group：~400ms（1并发）；~1500ms（5并发）；
+使用[sql-parser](https://github.com/FoundationDB/sql-parser "sql-parser")作为对外API接口来降低用户门槛。

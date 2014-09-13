@@ -18,6 +18,11 @@
       </timeBasedFileNamingAndTriggeringPolicy>
       <maxHistory>7</maxHistory>
     </rollingPolicy>
+    
+    <!-- Only log level DEBUG and above -->
+    <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+      <level>DEBUG</level>
+    </filter>
 
     <!-- Safely log to the same file from multiple JVMs. Degrades performance! -->
     <prudent>true</prudent>

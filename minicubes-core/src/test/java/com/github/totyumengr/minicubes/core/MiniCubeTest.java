@@ -18,10 +18,13 @@ package com.github.totyumengr.minicubes.core;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
+import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import md.math.DoubleDouble;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -34,6 +37,7 @@ import org.springframework.core.io.ClassPathResource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.totyumengr.minicubes.core.FactTable.FactTableBuilder;
+import com.github.totyumengr.minicubes.core.FactTable.Record;
 
 /**
  * @author mengran
@@ -51,7 +55,7 @@ public class MiniCubeTest {
         
         String dataFile = System.getProperty("dataFile", "data_fc_bd_qs_day_detail_20140606.data");
         
-        FactTableBuilder builder = new FactTableBuilder().build("MiniCubeTest")
+        FactTableBuilder builder = new FactTableBuilder().build("MiniCubeTest", 4)
             .addDimColumns(Arrays.asList(new String[] {"the_date", "tradeId", "productLineId", "postId"}))
             .addIndColumns(Arrays.asList(new String[] {"csm", "cash", "click", "shw"}));
         
@@ -69,9 +73,9 @@ public class MiniCubeTest {
             }
             builder.addDimDatas(index, Arrays.asList(new Long[] {
                 Long.valueOf(split[0]), Long.valueOf(split[1]), Long.valueOf(split[2]), Long.valueOf(split[3])}));
-            builder.addIndDatas(index, Arrays.asList(new BigDecimal[] {
-                new BigDecimal(split[4]), new BigDecimal(split[5]), 
-                    new BigDecimal(split[6]), new BigDecimal(split[7])}));
+            builder.addIndDatas(index, Arrays.asList(new DoubleDouble[] {
+                new DoubleDouble(split[4]), new DoubleDouble(split[5]), 
+                    new DoubleDouble(split[6]), new DoubleDouble(split[7])}));
         }
         reader.close();
         LOGGER.info("prepare - end: {}, {}ms", System.currentTimeMillis(), System.currentTimeMillis() - startTime);
@@ -107,7 +111,7 @@ public class MiniCubeTest {
         
     }
     
-    @Test
+//    @Test
     public void test_2_1_Group_tradeId_filter_tradeId() throws Throwable {
         
         Map<String, List<Long>> filter = new HashMap<String, List<Long>>(1);
@@ -134,7 +138,7 @@ public class MiniCubeTest {
         }
     }
     
-    @Test
+//    @Test
     public void test_2_2_Group_tradeId() throws Throwable {
         
         for (int i = 0; i < 5; i++) {
@@ -159,9 +163,6 @@ public class MiniCubeTest {
     @Test
     public void test_3_1_BitmapIndex_Sum_20140606() throws Throwable {
         
-        // Start to build bitmap index
-        Assert.assertEquals(2, miniCube.buildBitmapIndex());
-        
         Map<String, List<Long>> filter = new HashMap<String, List<Long>>(1);
         filter.put("the_date", Arrays.asList(new Long[] {20140606L}));
         for (int i = 0; i < 3; i++) {
@@ -172,9 +173,6 @@ public class MiniCubeTest {
     
     @Test
     public void test_3_2_BitmapIndex_Sum_filter_tradeId() throws Throwable {
-        
-        // Start to build bitmap index
-        Assert.assertEquals(2, miniCube.buildBitmapIndex());
         
         Map<String, List<Long>> filter = new HashMap<String, List<Long>>(1);
         filter.put("tradeId", Arrays.asList(new Long[] {
@@ -188,6 +186,17 @@ public class MiniCubeTest {
             Thread.sleep(1000L);
         }
         
+    }
+    
+    @Test
+    public void test_4_1_DoubleDouble_Sum_20140606() throws Throwable {
+        
+        DoubleDouble dd = new DoubleDouble();
+        for (Record r : miniCube.factTable.getRecords()) {
+            dd = dd.add(DoubleDouble.valueOf(r.getInd("csm").toString()));
+        }
+        
+        Assert.assertEquals("138240687.91500000", new DecimalFormat("##0.00000000").format(dd.doubleValue()));
     }
     
 }

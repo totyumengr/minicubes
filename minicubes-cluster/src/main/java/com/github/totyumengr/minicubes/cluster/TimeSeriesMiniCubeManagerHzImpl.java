@@ -17,6 +17,8 @@ package com.github.totyumengr.minicubes.cluster;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -38,6 +40,8 @@ import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
 
+import md.math.DoubleDouble;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,7 +50,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.jdbc.core.RowCallbackHandler;
+import org.springframework.jdbc.core.SqlParameterValue;
+import org.springframework.jdbc.core.SqlTypeValue;
+import org.springframework.jdbc.core.StatementCreatorUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
@@ -328,66 +336,105 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
             }
             
             LOGGER.info("Start fetching data and building cube {}, {}", cubeId, timeSeries);
+            
             JdbcTemplate template = new JdbcTemplate(impl.dataSource);
             FactTableBuilder builder = new FactTableBuilder();
             boolean builded = false;
+            AtomicInteger rowCount = new AtomicInteger();
             try {
-                builder.build(timeSeries);
+                builder.build(timeSeries, impl.splitIndex - 1);
                 AtomicBoolean processMeta = new AtomicBoolean(true);
                 AtomicInteger actualSplitIndex = new AtomicInteger();
-                template.query(impl.factSourceSql, new RowCallbackHandler() {
+                
+                List<SqlParameterValue> params = new ArrayList<SqlParameterValue>();
+                if (timeSeries.length() == 8) {
+                    SqlParameterValue v = new SqlParameterValue(SqlTypeValue.TYPE_UNKNOWN, timeSeries);
+                    params.add(v);
+                } else if (timeSeries.length() == 6) {
+                    SqlParameterValue start = new SqlParameterValue(SqlTypeValue.TYPE_UNKNOWN, timeSeries + "01");
+                    SqlParameterValue end = new SqlParameterValue(SqlTypeValue.TYPE_UNKNOWN, timeSeries + "31");
+                    params.add(start);
+                    params.add(end);
+                } else {
+                    throw new IllegalArgumentException("Only supported day or month format." + timeSeries);
+                }
+                template.query(new PreparedStatementCreator() {
                     
-                    @Override
-                    public void processRow(ResultSet rs) throws SQLException {
-                        if (processMeta.get()) {
-                            ResultSetMetaData meta = rs.getMetaData();
-                            int dimSize = 0;
-                            if (impl.splitIndex < 0) {
-                                LOGGER.debug("Not specify splitIndex so we guess by column labels");
-                                for (int i = 1; i <= meta.getColumnCount(); i++) {
-                                    if (meta.getColumnLabel(i).toLowerCase().startsWith("dim_")) {
-                                        LOGGER.debug("Add dim column {}", meta.getColumnLabel(i));
-                                        builder.addDimColumns(Arrays.asList(new String[] {meta.getColumnLabel(i)}));
-                                        dimSize++;
-                                    } else {
-                                        LOGGER.debug("Add measure column {}", meta.getColumnLabel(i));
-                                        builder.addIndColumns(Arrays.asList(new String[] {meta.getColumnLabel(i)}));
+                        @Override
+                        public PreparedStatement createPreparedStatement(Connection con)
+                                throws SQLException {
+                            
+                            PreparedStatement stmt = con.prepareStatement(impl.factSourceSql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+                            // MySQL steaming result-set http://dev.mysql.com/doc/connector-j/en/connector-j-reference-implementation-notes.html
+                            // http://stackoverflow.com/questions/2095490/how-to-manage-a-large-dataset-using-spring-mysql-and-rowcallbackhandler
+                            try {
+                                stmt.setFetchSize(Integer.MIN_VALUE);
+                                LOGGER.info("Set stream feature of MySQL. {}", stmt.getFetchSize());
+                            } catch (Exception e) {
+                                // Ignore maybe do not supported.
+                            }
+                            for (int i = 0; i < params.size(); i++) {
+                                StatementCreatorUtils.setParameterValue(stmt, i + 1, params.get(i), params.get(i).getValue());
+                            }
+                            return stmt;
+                        }
+                    }, new RowCallbackHandler() {
+    
+                        @Override
+                        public void processRow(ResultSet rs) throws SQLException {
+                            if (processMeta.get()) {
+                                ResultSetMetaData meta = rs.getMetaData();
+                                int dimSize = 0;
+                                if (impl.splitIndex < 0) {
+                                    LOGGER.debug("Not specify splitIndex so we guess by column labels");
+                                    for (int i = 1; i <= meta.getColumnCount(); i++) {
+                                        if (meta.getColumnLabel(i).toLowerCase().startsWith("dim_")) {
+                                            LOGGER.debug("Add dim column {}", meta.getColumnLabel(i));
+                                            builder.addDimColumns(Arrays.asList(new String[] {meta.getColumnLabel(i)}));
+                                            dimSize++;
+                                        } else {
+                                            LOGGER.debug("Add measure column {}", meta.getColumnLabel(i));
+                                            builder.addIndColumns(Arrays.asList(new String[] {meta.getColumnLabel(i)}));
+                                        }
+                                    }
+                                } else {
+                                    LOGGER.debug("Specify splitIndex {} means measure start.");
+                                    for (int i = 1; i <= meta.getColumnCount(); i++) {
+                                        if (i < impl.splitIndex) {
+                                            LOGGER.debug("Add dim column {}", meta.getColumnLabel(i));
+                                            builder.addDimColumns(Arrays.asList(new String[] {meta.getColumnLabel(i)}));
+                                            dimSize++;
+                                        } else {
+                                            LOGGER.debug("Add measure column {}", meta.getColumnLabel(i));
+                                            builder.addIndColumns(Arrays.asList(new String[] {meta.getColumnLabel(i)}));
+                                        }
                                     }
                                 }
-                            } else {
-                                LOGGER.debug("Specify splitIndex {} means measure start.");
-                                for (int i = 1; i <= meta.getColumnCount(); i++) {
-                                    if (i < impl.splitIndex) {
-                                        LOGGER.debug("Add dim column {}", meta.getColumnLabel(i));
-                                        builder.addDimColumns(Arrays.asList(new String[] {meta.getColumnLabel(i)}));
-                                        dimSize++;
-                                    } else {
-                                        LOGGER.debug("Add measure column {}", meta.getColumnLabel(i));
-                                        builder.addIndColumns(Arrays.asList(new String[] {meta.getColumnLabel(i)}));
-                                    }
+                                actualSplitIndex.set(dimSize);
+                                // End meta setting
+                                processMeta.set(false);
+                            }
+                            
+                            // Add fact data
+                            List<Long> dimDatas = new ArrayList<Long>(actualSplitIndex.get());
+                            List<DoubleDouble> indDatas = new ArrayList<DoubleDouble>(rs.getMetaData().getColumnCount() - dimDatas.size());
+                            for (int i = 0; i < rs.getMetaData().getColumnCount(); i++) {
+                                if (i < actualSplitIndex.get()) {
+                                    dimDatas.add(rs.getLong(i + 1));
+                                } else {
+                                    indDatas.add(DoubleDouble.valueOf(rs.getDouble(i + 1)));
                                 }
                             }
-                            actualSplitIndex.set(dimSize);
-                            // End meta setting
-                            processMeta.set(false);
-                        }
-                        
-                        LOGGER.debug("Start to add fact data");
-                        // Add fact data
-                        List<Long> dimDatas = new ArrayList<Long>(actualSplitIndex.get());
-                        List<BigDecimal> indDatas = new ArrayList<BigDecimal>(rs.getMetaData().getColumnCount() - dimDatas.size());
-                        for (int i = 0; i < rs.getMetaData().getColumnCount(); i++) {
-                            if (i < actualSplitIndex.get()) {
-                                dimDatas.add(rs.getLong(i + 1));
-                            } else {
-                                indDatas.add(rs.getBigDecimal(i + 1));
+                            rowCount.incrementAndGet();
+                            builder.addDimDatas(rowCount.get(), dimDatas);
+                            builder.addIndDatas(rowCount.get(), indDatas);
+                            
+                            if (rowCount.get() % 1000000 == 0) {
+                                LOGGER.info("Loaded {} records into cube.", rowCount.get());
                             }
                         }
-                        builder.addDimDatas(rs.getRow(), dimDatas);
-                        builder.addIndDatas(rs.getRow(), indDatas);
                     }
-                    
-                }, timeSeries);
+                );
                 
                 // Ending build operation
                 impl.miniCube = new MiniCube(builder.done());

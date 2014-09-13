@@ -15,10 +15,13 @@
  */
 package com.github.totyumengr.minicubes.cluster;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.ObjectUtils;
 
 /**
  * Spring-Boot app entry point. Will not package for dependency.
@@ -30,7 +33,11 @@ import org.springframework.context.annotation.Configuration;
 @ComponentScan
 public class Application {
     
+    private static final Logger LOGGER = LoggerFactory.getLogger(Application.class);
+    
     public static void main(String[] args) {
+        
+        LOGGER.debug("Start application with args {}", ObjectUtils.getDisplayString(args));
         
         SpringApplication.run(Application.class, args);
     }
