@@ -373,8 +373,11 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
                     String y = timeSeries.toUpperCase().split("Q")[0];
                     int q = Integer.parseInt(timeSeries.toUpperCase().split("Q")[1]);
                     Assert.isTrue(q > 0 && q < 5, "Only support pattern yyyyQ[1-4]. " + timeSeries);
-                    SqlParameterValue start = new SqlParameterValue(SqlTypeValue.TYPE_UNKNOWN, y + ((q - 1) * 3 + 1) + "01");
-                    SqlParameterValue end = new SqlParameterValue(SqlTypeValue.TYPE_UNKNOWN, y + (q * 3) + "31");
+                    int m = ((q - 1) * 3 + 1);
+                    // Fix #3
+                    SqlParameterValue start = new SqlParameterValue(SqlTypeValue.TYPE_UNKNOWN, y + (m > 9 ?  m : ("0" + m)) + "01");
+                    m = (q * 3);
+                    SqlParameterValue end = new SqlParameterValue(SqlTypeValue.TYPE_UNKNOWN, y + (m > 9 ? m : ("0" + m)) + "31");
                     params.add(start);
                     params.add(end);
                 } else {
