@@ -38,6 +38,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
@@ -358,16 +359,34 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
                 
                 List<SqlParameterValue> params = new ArrayList<SqlParameterValue>();
                 if (timeSeries.length() == 8) {
+                    // Means one day's data
                     SqlParameterValue v = new SqlParameterValue(SqlTypeValue.TYPE_UNKNOWN, timeSeries);
                     params.add(v);
-                } else if (timeSeries.length() == 6) {
+                } else if (timeSeries.length() == 6 && !timeSeries.toUpperCase().contains("Q")) {
+                    // Means one month's data
                     SqlParameterValue start = new SqlParameterValue(SqlTypeValue.TYPE_UNKNOWN, timeSeries + "01");
                     SqlParameterValue end = new SqlParameterValue(SqlTypeValue.TYPE_UNKNOWN, timeSeries + "31");
+                    params.add(start);
+                    params.add(end);
+                } else if (timeSeries.length() == 6 && timeSeries.toUpperCase().contains("Q")) {
+                    // Means one Q's data
+                    String y = timeSeries.toUpperCase().split("Q")[0];
+                    int q = Integer.parseInt(timeSeries.toUpperCase().split("Q")[1]);
+                    SqlParameterValue start = new SqlParameterValue(SqlTypeValue.TYPE_UNKNOWN, y + ((q - 1) * 3 + 1) + "01");
+                    SqlParameterValue end = new SqlParameterValue(SqlTypeValue.TYPE_UNKNOWN, y + (q * 3) + "31");
                     params.add(start);
                     params.add(end);
                 } else {
                     throw new IllegalArgumentException("Only supported day or month format." + timeSeries);
                 }
+                LOGGER.info("Start to fetch data {}", params.stream().map(
+                        new Function<SqlParameterValue, Object>() {
+                            @Override
+                            public Object apply(SqlParameterValue t) {
+                                return t.getValue();
+                            }
+                        }).reduce("", (x, y) -> x + "~" + y));
+                
                 template.query(new PreparedStatementCreator() {
                     
                         @Override
