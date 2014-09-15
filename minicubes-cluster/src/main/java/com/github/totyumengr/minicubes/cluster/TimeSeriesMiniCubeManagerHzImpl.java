@@ -178,7 +178,7 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
                         membershipEvent.getMember(), membershipEvent.getCluster().getClusterTime());
                 
                 IMap<String, String> miniCubeManager = hazelcastInstance.getMap(MINICUBE_MANAGER);
-                LOGGER.info("Minicube manager status {}", ObjectUtils.getDisplayString(miniCubeManager));
+                LOGGER.info("Minicube manager status {}", ObjectUtils.getDisplayString(miniCubeManager.entrySet()));
                 
                 // FIXME: Schedule to remove relationship after "long disconnect".
             }
@@ -201,10 +201,10 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
         instance.getUserContext().put("this", TimeSeriesMiniCubeManagerHzImpl.this);
         
         // Handle new member
+        LOGGER.info("Handle new member {} came in after 1 minute.", instance.getCluster().getLocalMember());
         handleNewMember.schedule(new Runnable() {
                 @Override
                 public void run() {
-                    LOGGER.info("Handle new member {} came in after 1 minute.", instance.getCluster().getLocalMember());
                     handleNewMember(instance, instance.getCluster().getLocalMember());
                 }
             }, 60, TimeUnit.SECONDS);
@@ -372,6 +372,7 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
                     // Means one Q's data
                     String y = timeSeries.toUpperCase().split("Q")[0];
                     int q = Integer.parseInt(timeSeries.toUpperCase().split("Q")[1]);
+                    Assert.isTrue(q > 0 && q < 5, "Only support pattern yyyyQ[1-4]. " + timeSeries);
                     SqlParameterValue start = new SqlParameterValue(SqlTypeValue.TYPE_UNKNOWN, y + ((q - 1) * 3 + 1) + "01");
                     SqlParameterValue end = new SqlParameterValue(SqlTypeValue.TYPE_UNKNOWN, y + (q * 3) + "31");
                     params.add(start);
