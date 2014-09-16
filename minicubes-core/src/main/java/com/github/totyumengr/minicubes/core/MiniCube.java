@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -67,7 +68,7 @@ public class MiniCube implements Aggregations {
     
     // ---------------------------- Aggregation API ----------------------------
     
-    private Stream<Entry<Integer, Record>> filter(String indName, Map<String, List<Integer>> filterDims) {
+    private Stream<Entry<Integer, Record>> filter(Map<String, List<Integer>> filterDims) {
         
         if (filterDims == null) {
             filterDims = new HashMap<String, List<Integer>>(0);
@@ -107,13 +108,14 @@ public class MiniCube implements Aggregations {
 //                 }
             } else {
                 final RoaringBitmap m = ands;
-                Stream<Entry<Integer, Record>> stream = factTable.getRecords().entrySet().parallelStream().filter(new Predicate<Entry<Integer, Record>>() {
+                Stream<Entry<Integer, Record>> stream = factTable.getRecords().entrySet().parallelStream().filter(
+                        new Predicate<Entry<Integer, Record>>() {
 
-                    @Override
-                    public boolean test(Entry<Integer, Record> t) {
-                        return m.contains(t.getKey());
-                    }
-                });
+                            @Override
+                            public boolean test(Entry<Integer, Record> t) {
+                                return m.contains(t.getKey());
+                            }
+                        });
                 LOGGER.info("Filter record IDs count {}", ands.getCardinality());
                 return stream;
             }
@@ -151,8 +153,8 @@ public class MiniCube implements Aggregations {
         
         long enterTime = System.currentTimeMillis();
         
-        Stream<Entry<Integer, Record>> stream = filter(indName, filterDims);
-        LOGGER.debug("Prepare predicate using {}ms.", System.currentTimeMillis() - enterTime);
+        Stream<Entry<Integer, Record>> stream = filter(filterDims);
+        LOGGER.debug("Prepare predicate using {} ms.", System.currentTimeMillis() - enterTime);
         
         DoubleDouble sum = stream.map(
             new Function<Entry<Integer, Record>, DoubleDouble>() {
@@ -160,9 +162,10 @@ public class MiniCube implements Aggregations {
                 public DoubleDouble apply(Entry<Integer, Record> t) {
                     return t.getValue().getInd(indName);
                 }
-            }).reduce(new DoubleDouble(0), (x, y) -> x.add(y));
-        LOGGER.info("Sum {} filter {} result {} using {} ms.", indName, filterDims, sum, 
-            System.currentTimeMillis() - enterTime);
+            }).reduce(new DoubleDouble(), (x, y) -> x.add(y));
+        
+        enterTime = System.currentTimeMillis() - enterTime;
+        LOGGER.info("Sum {} filter {} result {} using {} ms.", indName, filterDims, sum, enterTime);
         
         return new BigDecimal(sum.toSciNotation()).setScale(IND_SCALE, BigDecimal.ROUND_HALF_UP);
     }
@@ -171,7 +174,7 @@ public class MiniCube implements Aggregations {
     public Map<Integer, BigDecimal> sum(String indName, String groupByDimName, Map<String, List<Integer>> filterDims) {
         
         long enterTime = System.currentTimeMillis();
-        Stream<Entry<Integer, Record>> stream = filter(indName, filterDims);
+        Stream<Entry<Integer, Record>> stream = filter(filterDims);
         
         Map<Integer, BigDecimal> group = new HashMap<Integer, BigDecimal>();
         stream.collect(Collectors.groupingBy(p->p.getValue().getDim(groupByDimName), Collectors.reducing(new DoubleDouble(), 
@@ -182,14 +185,49 @@ public class MiniCube implements Aggregations {
                     }
                 }, (x, y) -> x.add(y))))
             .forEach((k, v) -> group.put(k, new BigDecimal(v.toSciNotation()).setScale(IND_SCALE, BigDecimal.ROUND_HALF_UP)));
-        LOGGER.info("Group by {} sum {} filter {} result {} using {} ms.", groupByDimName, indName, filterDims, group, 
-            System.currentTimeMillis() - enterTime);
+        
+        enterTime = System.currentTimeMillis() - enterTime;
+        LOGGER.debug("Group by {} sum {} filter {} result {} using {} ms.", groupByDimName, indName, filterDims, group, 
+                enterTime);
+        LOGGER.info("Group by {} sum {} filter {} result size {} using {} ms.", groupByDimName, indName, 
+                filterDims, group.size(), enterTime);
         return group;
     }
 
     @Override
     public String toString() {
         return "MiniCube [factTable=" + factTable + "]";
+    }
+
+    @Override
+    public Map<Integer, Set<Integer>> distinct(String distinctName, boolean isDim,
+            String groupByDimName, Map<String, List<Integer>> filterDims) {
+        
+        long enterTime = System.currentTimeMillis();
+        Stream<Entry<Integer, Record>> stream = filter(filterDims);
+        Map<Integer, Set<Integer>> group = stream.collect(Collectors.groupingBy(p->p.getValue().getDim(groupByDimName), 
+                Collectors.mapping(isDim ? p->p.getValue().getDim(distinctName) 
+                        : p->p.getValue().getInd(distinctName).intValue(), Collectors.toSet())));
+        enterTime = System.currentTimeMillis() - enterTime;
+        LOGGER.debug("Group by {} distinct {} filter {} result {} using {} ms.", groupByDimName, distinctName, 
+                filterDims, group, enterTime);
+        LOGGER.info("Group by {} distinct {} filter {} result size {} using {} ms.", groupByDimName, distinctName, 
+                filterDims, group.size(), enterTime);
+        return group;
+    }
+
+    @Override
+    public Map<Integer, Long> discnt(String distinctName, boolean isDim, String groupByDimName,
+            Map<String, List<Integer>> filterDims) {
+        
+        // Do distinct
+        Map<Integer, Set<Integer>> distinct = distinct(distinctName, isDim, groupByDimName, filterDims);
+        // Count it
+        Map<Integer, Long> result = distinct.entrySet().stream().collect(
+                Collectors.toMap(e -> e.getKey(), e -> e.getValue().stream().count()));
+        
+        LOGGER.debug("Distinct {} with filter {} results is {}", distinct, filterDims, result);
+        return result;
     }
     
 }

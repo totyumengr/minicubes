@@ -1,7 +1,12 @@
 MiniCubes
 =========
 
-MiniCubes是一个高性能、分布式、内存型OLAP计算引擎。设计上利用Java8 Stream的高性能计算特性来支撑单JVM节点上的聚集计算，基于Hazelcast#Distributed ExecutorService来做分布式计算。
+MiniCubes是一个高性能、分布式、内存型OLAP计算引擎（利用Java8 Stream的高性能计算特性来支撑单JVM节点上的聚集计算），提供聚合函数有：
+* sum：指定指标的SUM聚集计算。
+* groupby；指定指标在某一维度上的GROUPBY聚合计算。
+* distinct[-count]：指定指标/维度在某一维度上的DISTINCT和DISTINCT-COUNT计算。
+
+**上述函数均支持分布式计算特性**
 
 ## 本地开发：
 我们采用Spring Boot来构建“自包含”的应用，JDK1.8，Maven3：
@@ -21,6 +26,12 @@ MiniCubes是一个高性能、分布式、内存型OLAP计算引擎。设计上�
 ## minicubes-core：
 本模块提供内存型Cube的操作接口，设计目标就是：高性能
 * 使用Java8 Stream来提高聚集方法性能，使用parallel模式。
+* 使用[Bitmap Index](https://github.com/lemire/RoaringBitmap "compressed bitset")来增强部分聚集方法性能。
+* 使用[DoubleDouble](http://tsusiatsoftware.net/dd/main.html "DoubleDouble")替换Java.math.BigDecimal来降低内存占用。
+
+## minicubes-cluster：
+本模块提供分布式计算能力，设计目标就是：高可用
+* 使用[MySQL Streaming](http://dev.mysql.com/doc/connector-j/en/connector-j-reference-implementation-notes.html "MySQL Streaming")来适应大结果集的加载。
 * 使用[Bitmap Index](https://github.com/lemire/RoaringBitmap "compressed bitset")来增强部分聚集方法性能。
 * 使用[DoubleDouble](http://tsusiatsoftware.net/dd/main.html "DoubleDouble")替换Java.math.BigDecimal来降低内存占用。
 

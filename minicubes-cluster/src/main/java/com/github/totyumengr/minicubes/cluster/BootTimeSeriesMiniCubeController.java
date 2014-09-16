@@ -20,6 +20,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.hibernate.validator.constraints.NotBlank;
@@ -92,7 +93,7 @@ public class BootTimeSeriesMiniCubeController {
     @RequestMapping(value="/groupsum", method={RequestMethod.POST, RequestMethod.GET})
     public @ResponseBody Map<Integer, BigDecimal> groupsum(@NotBlank @RequestParam String indName, 
             @RequestParam(required=false) String filterDims,
-            @RequestParam(required=false) String groupbyDim,
+            @RequestParam String groupbyDim,
             @NotBlank @RequestParam String... timeSeries) throws Throwable {
         
         LOGGER.info("Try to sum {} on {} with filter {}.", indName, ObjectUtils.getDisplayString(timeSeries), filterDims);
@@ -102,5 +103,37 @@ public class BootTimeSeriesMiniCubeController {
         LOGGER.info("Sucess to sum {} on {} result is {}.", indName, timeSeries, sum);
         
         return sum;
+    }
+    
+    @RequestMapping(value="/distinct", method={RequestMethod.POST, RequestMethod.GET})
+    public @ResponseBody Map<Integer, Set<Integer>> distinct(@NotBlank @RequestParam String distinctName,
+            @NotBlank @RequestParam(required=false) Boolean isDim,
+            @RequestParam(required=false) String filterDims,
+            @RequestParam String groupbyDim,
+            @NotBlank @RequestParam String... timeSeries) throws Throwable {
+        
+        LOGGER.info("Try to distinct {} on {} with filter {}.", distinctName, ObjectUtils.getDisplayString(timeSeries), filterDims);
+        Map<String, List<Integer>> filter = (filterDims == null || "".equals(filterDims)) ? null
+                : objectMapper.readValue(filterDims, new TypeReference<Map<String, List<Integer>>>() {});
+        Map<Integer, Set<Integer>> distinct = manager.aggs(timeSeries).distinct(distinctName, isDim ? true : isDim, groupbyDim, filter);
+        LOGGER.info("Sucess to distinct {} on {} result is {}.", distinctName, timeSeries, distinct);
+        
+        return distinct;
+    }
+    
+    @RequestMapping(value="/distinctcount", method={RequestMethod.POST, RequestMethod.GET})
+    public @ResponseBody Map<Integer, Long> distinctCount(@NotBlank @RequestParam String distinctName,
+            @NotBlank @RequestParam(required=false) Boolean isDim,
+            @RequestParam(required=false) String filterDims,
+            @RequestParam String groupbyDim,
+            @NotBlank @RequestParam String... timeSeries) throws Throwable {
+        
+        LOGGER.info("Try to distinct-count {} on {} with filter {}.", distinctName, ObjectUtils.getDisplayString(timeSeries), filterDims);
+        Map<String, List<Integer>> filter = (filterDims == null || "".equals(filterDims)) ? null
+                : objectMapper.readValue(filterDims, new TypeReference<Map<String, List<Integer>>>() {});
+        Map<Integer, Long> distinct = manager.aggs(timeSeries).discnt(distinctName, isDim ? true : isDim, groupbyDim, filter);
+        LOGGER.info("Sucess to distinct-count {} on {} result is {}.", distinctName, timeSeries, distinct);
+        
+        return distinct;
     }
 }

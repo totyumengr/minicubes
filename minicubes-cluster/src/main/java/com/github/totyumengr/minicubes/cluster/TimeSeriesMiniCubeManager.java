@@ -78,4 +78,5 @@ public interface TimeSeriesMiniCubeManager extends Aggregations {
      * @return aggregation object
      */
     Aggregations aggs(String... timeSeries);
+    
 }

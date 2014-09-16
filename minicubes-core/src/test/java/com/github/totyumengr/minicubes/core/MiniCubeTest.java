@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import md.math.DoubleDouble;
 
@@ -33,6 +34,7 @@ import org.junit.runners.MethodSorters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.util.StopWatch;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.totyumengr.minicubes.core.FactTable.FactTableBuilder;
@@ -190,6 +192,43 @@ public class MiniCubeTest {
     public void test_4_1_DoubleDouble_Sum_20140606() throws Throwable {
         
         Assert.assertEquals("138240687.91500000", miniCube.sum("csm").toString());
+    }
+    
+    @Test
+    public void test_5_1_Distinct_20140606() throws Throwable {
+        
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
+        Map<String, List<Integer>> filter = new HashMap<String, List<Integer>>(1);
+        Map<Integer, Set<Integer>> distinct = miniCube.distinct("postId", true, "tradeId", filter);
+        stopWatch.stop();
+        
+        Assert.assertEquals(210, distinct.size());
+        Assert.assertEquals(3089, distinct.get(1601).size());
+        Assert.assertEquals(1825, distinct.get(1702).size());
+        Assert.assertEquals(2058, distinct.get(-2).size());
+        
+        LOGGER.info(stopWatch.getTotalTimeSeconds() + " used for distinct result {}", distinct.toString());
+    }
+    
+    @Test
+    public void test_5_2_DistinctCount_20140606() throws Throwable {
+        
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
+        Map<String, List<Integer>> filter = new HashMap<String, List<Integer>>(1);
+        filter.put("tradeId", Arrays.asList(new Integer[] {
+            3205, 3206, 3207, 3208, 3209, 3210, 3212, 3299, 
+            3204, 3203, 3202, 3201, 3211}));
+        Map<Integer, Set<Integer>> distinct = miniCube.distinct("postId", true, "tradeId", filter);
+        stopWatch.stop();
+        
+        Assert.assertEquals(13, distinct.size());
+        Assert.assertEquals(277, distinct.get(3209).size());
+        Assert.assertEquals(186, distinct.get(3211).size());
+        Assert.assertEquals(464, distinct.get(3206).size());
+        LOGGER.info(stopWatch.getTotalTimeSeconds() + " used for distinct result {}", distinct.toString());
+        
     }
     
 }
