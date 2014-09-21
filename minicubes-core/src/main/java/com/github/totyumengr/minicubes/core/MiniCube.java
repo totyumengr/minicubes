@@ -177,7 +177,7 @@ public class MiniCube implements Aggregations {
         Stream<Entry<Integer, Record>> stream = filter(filterDims);
         
         Map<Integer, BigDecimal> group = new HashMap<Integer, BigDecimal>();
-        stream.collect(Collectors.groupingBy(p->p.getValue().getDim(groupByDimName), Collectors.reducing(new DoubleDouble(), 
+        stream.collect(Collectors.groupingByConcurrent(p->p.getValue().getDim(groupByDimName), Collectors.reducing(new DoubleDouble(), 
                 new Function<Entry<Integer, Record>, DoubleDouble>() {
                     @Override
                     public DoubleDouble apply(Entry<Integer, Record> t) {
@@ -205,7 +205,7 @@ public class MiniCube implements Aggregations {
         
         long enterTime = System.currentTimeMillis();
         Stream<Entry<Integer, Record>> stream = filter(filterDims);
-        Map<Integer, Set<Integer>> group = stream.collect(Collectors.groupingBy(p->p.getValue().getDim(groupByDimName), 
+        Map<Integer, Set<Integer>> group = stream.collect(Collectors.groupingByConcurrent(p->p.getValue().getDim(groupByDimName), 
                 Collectors.mapping(isDim ? p->p.getValue().getDim(distinctName) 
                         : p->p.getValue().getInd(distinctName).intValue(), Collectors.toSet())));
         enterTime = System.currentTimeMillis() - enterTime;

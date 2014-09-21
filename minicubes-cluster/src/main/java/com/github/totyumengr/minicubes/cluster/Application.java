@@ -37,7 +37,7 @@ public class Application {
     
     public static void main(String[] args) {
         
-        LOGGER.debug("Start application with args {}", ObjectUtils.getDisplayString(args));
+        LOGGER.info("Start application with args {}", ObjectUtils.getDisplayString(args));
         
         SpringApplication.run(Application.class, args);
     }
