@@ -141,6 +141,8 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
         Config hazelcastConfig = new Config("minicubes-cluster");
         hazelcastConfig.setProperty("hazelcast.system.log.enabled", "false");
         hazelcastConfig.setProperty("hazelcast.logging.type", "slf4j");
+        hazelcastConfig.setProperty("hazelcast.jmx", "true");
+        hazelcastConfig.setProperty("hazelcast.jmx.detailed", "true");
         
         hazelcastConfig.setGroupConfig(new GroupConfig(hzGroupName = env.getRequiredProperty("hazelcast.group.name"), 
                 env.getRequiredProperty("hazelcast.group.password")));

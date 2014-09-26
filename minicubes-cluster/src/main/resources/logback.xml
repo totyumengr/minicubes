@@ -19,9 +19,9 @@
       <maxHistory>7</maxHistory>
     </rollingPolicy>
     
-    <!-- Only log level DEBUG and above -->
+    <!-- Only log level INFO and above -->
     <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-      <level>DEBUG</level>
+      <level>INFO</level>
     </filter>
 
     <!-- Safely log to the same file from multiple JVMs. Degrades performance! -->
@@ -33,11 +33,11 @@
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
     <!-- encoder defaults to ch.qos.logback.classic.encoder.PatternLayoutEncoder -->
     <encoder>
-      <pattern>%-5level %logger{36} - %msg%n</pattern>
+      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
     </encoder>
-    <!-- Only log level INFO and above -->
+    <!-- Only log level ERROR and above -->
     <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-      <level>INFO</level>
+      <level>ERROR</level>
     </filter>
   </appender>
 

@@ -43,6 +43,14 @@
 
 	<dependencies>
 		<dependency>
+			<groupId>com.codahale.metrics</groupId>
+			<artifactId>metrics-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>com.github.totyumengr</groupId>
 			<artifactId>minicubes-core</artifactId>
 			<version>${minicubes.core.version}</version>
@@ -80,6 +88,10 @@
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.jolokia</groupId>
+			<artifactId>jolokia-core</artifactId>
+		</dependency>
 	</dependencies>
 
 	<repositories>
@@ -88,4 +100,5 @@
 			<url>http://repo.spring.io/ext-release-local</url>
 		</repository>
 	</repositories>
+	<description>Distributed in-memory cube base on java8 stream</description>
 </project>
