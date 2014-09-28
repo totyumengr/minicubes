@@ -10,11 +10,11 @@ MiniCubes是一个高性能、分布式、内存型OLAP计算引擎（利用Java
 
 ## 本地开发：
 我们采用Spring Boot来构建“自包含”的应用，JDK1.8，Maven3：
-* 1. minicubes-core目录下执行：mvn clean install -DskipTests=true
-* 2. minicubes-cluster目录下执行：mvn clean install -DskipTests=true
-* 3. Maven仓库目录下：com/github/totyumengr/minicubes-cluster/目录下，找到jar包
-* 4. 直接执行：java -server -jar minicubes-cluster-VERSIONS.jar
-* 5. 访问：http://localhost:PORT/[status,reassign,sum]
+* minicubes-core目录下执行：mvn clean install -DskipTests=true
+* minicubes-cluster目录下执行：mvn clean install -DskipTests=true
+* Maven仓库目录下：com/github/totyumengr/minicubes-cluster/目录下，找到jar包
+* 直接执行：java -server -jar minicubes-cluster-VERSIONS.jar
+* 访问：http://localhost:PORT/[status,reassign,sum]
 
 *可以修改src/main/resources/application.properties来改变配置。也可以使用Spring Boot提供的配置外部化能力*
 
@@ -35,6 +35,9 @@ MiniCubes是一个高性能、分布式、内存型OLAP计算引擎（利用Java
 * 使用[Bitmap Index](https://github.com/lemire/RoaringBitmap "compressed bitset")来增强部分聚集方法性能。
 * 使用[DoubleDouble](http://tsusiatsoftware.net/dd/main.html "DoubleDouble")替换Java.math.BigDecimal来降低内存占用。
 
-## 数据（物理机12核，内存128G）：
+## 数据（以下基于CPU12核，内存128G的物理机测试得出）：
 * 8G内存中可以存放26788234条记录（5个维度和4个指标），这些原始数据大小应该在1.5G。
-* 
+* 3台搭建集群上载入大概7000w条数据：
+    1. 单指标全量sum耗时平均400ms左右；
+    2. 单指标全量groupby耗时平均600ms左右，结果7000条左右；
+    3. 单指标全量distinctcount耗时平均800ms左右，结果7000条左右；
