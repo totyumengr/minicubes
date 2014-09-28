@@ -82,10 +82,11 @@ public class BootTimeSeriesMiniCubeController {
             @NotBlank @RequestParam String... timeSeries) throws Throwable {
         
         LOGGER.info("Try to sum {} on {} with filter {}.", indName, ObjectUtils.getDisplayString(timeSeries), filterDims);
+        long timing = System.currentTimeMillis();
         Map<String, List<Integer>> filter = (filterDims == null || "".equals(filterDims)) ? null
                 : objectMapper.readValue(filterDims, new TypeReference<Map<String, List<Integer>>>() {});
         BigDecimal sum = manager.aggs(timeSeries).sum(indName, filter);
-        LOGGER.info("Sucess to sum {} on {} result is {}.", indName, timeSeries, sum);
+        LOGGER.info("Sucess to sum {} on {} result is {} using {}ms.", indName, timeSeries, sum, System.currentTimeMillis() - timing);
         
         return sum;
     }
@@ -97,10 +98,12 @@ public class BootTimeSeriesMiniCubeController {
             @NotBlank @RequestParam String... timeSeries) throws Throwable {
         
         LOGGER.info("Try to sum {} on {} with filter {}.", indName, ObjectUtils.getDisplayString(timeSeries), filterDims);
+        long timing = System.currentTimeMillis();
         Map<String, List<Integer>> filter = (filterDims == null || "".equals(filterDims)) ? null
                 : objectMapper.readValue(filterDims, new TypeReference<Map<String, List<Integer>>>() {});
         Map<Integer, BigDecimal> sum = manager.aggs(timeSeries).sum(indName, groupbyDim, filter);
-        LOGGER.info("Sucess to sum {} on {} result is {}.", indName, timeSeries, sum);
+        LOGGER.info("Sucess to sum {} on {} result size is {} using {}ms.", indName, timeSeries, sum.size(), System.currentTimeMillis() - timing);
+        LOGGER.debug("Sucess to sum {} on {} result is {}.", indName, timeSeries, sum);
         
         return sum;
     }
@@ -113,10 +116,12 @@ public class BootTimeSeriesMiniCubeController {
             @NotBlank @RequestParam String... timeSeries) throws Throwable {
         
         LOGGER.info("Try to distinct {} on {} with filter {}.", distinctName, ObjectUtils.getDisplayString(timeSeries), filterDims);
+        long timing = System.currentTimeMillis();
         Map<String, List<Integer>> filter = (filterDims == null || "".equals(filterDims)) ? null
                 : objectMapper.readValue(filterDims, new TypeReference<Map<String, List<Integer>>>() {});
         Map<Integer, Set<Integer>> distinct = manager.aggs(timeSeries).distinct(distinctName, isDim ? true : isDim, groupbyDim, filter);
-        LOGGER.info("Sucess to distinct {} on {} result is {}.", distinctName, timeSeries, distinct);
+        LOGGER.info("Sucess to distinct {} on {} result size is {} using {}ms.", distinctName, timeSeries, distinct.size(), System.currentTimeMillis() - timing);
+        LOGGER.debug("Sucess to distinct {} on {} result is {}.", distinctName, timeSeries, distinct);
         
         return distinct;
     }
@@ -129,10 +134,12 @@ public class BootTimeSeriesMiniCubeController {
             @NotBlank @RequestParam String... timeSeries) throws Throwable {
         
         LOGGER.info("Try to distinct-count {} on {} with filter {}.", distinctName, ObjectUtils.getDisplayString(timeSeries), filterDims);
+        long timing = System.currentTimeMillis();
         Map<String, List<Integer>> filter = (filterDims == null || "".equals(filterDims)) ? null
                 : objectMapper.readValue(filterDims, new TypeReference<Map<String, List<Integer>>>() {});
         Map<Integer, Long> distinct = manager.aggs(timeSeries).discnt(distinctName, isDim ? true : isDim, groupbyDim, filter);
-        LOGGER.info("Sucess to distinct-count {} on {} result is {}.", distinctName, timeSeries, distinct);
+        LOGGER.info("Sucess to distinct-count {} on {} result size is {}.", distinctName, timeSeries, distinct.size(), System.currentTimeMillis() - timing);
+        LOGGER.debug("Sucess to distinct-count {} on {} result is {}.", distinctName, timeSeries, distinct);
         
         return distinct;
     }
