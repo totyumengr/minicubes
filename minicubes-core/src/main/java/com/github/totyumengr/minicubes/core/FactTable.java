@@ -42,7 +42,7 @@ public class FactTable {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(FactTable.class);
     
-    private Meta meta;
+    Meta meta;
     /**
      * For speeding {@link FactTableBuilder}, clear after {@link FactTableBuilder#done()}.
      */
@@ -53,13 +53,13 @@ public class FactTable {
      */
     Map<String, RoaringBitmap> bitmapIndex = new HashMap<String, RoaringBitmap>();
     
-    private static class Meta {
+    static class Meta {
         
-        private String name;
+        String name;
         private List<String> columnNames = new ArrayList<>();
         private Map<String, Integer> columnNameIndexMap = new HashMap<String, Integer>();
         private int indStartIndex = -1;
-        
+
         @Override
         public String toString() {
             return "Meta [name=" + name + ", columnNames=" + columnNames

@@ -568,6 +568,46 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
                 .map(e -> e.getStringAttribute("cubeId")).collect(Collectors.toList());
     }
     
+    private static class Mode extends Executee implements Callable<Void> {
+        
+        /**
+         * 
+         */
+        private static final long serialVersionUID = 1L;
+        
+        private boolean parallelMode;
+        
+        public Mode(boolean parallelMode) {
+            super();
+            this.parallelMode = parallelMode;
+        }
+
+        @Override
+        public Void call() throws Exception {
+            
+            LOGGER.info("Set model {}", parallelMode);
+            if (impl.miniCube != null) {
+                impl.miniCube.setParallelMode(parallelMode);
+            }
+            return null;
+        }
+        
+    }
+    
+    @Override
+    public void setMode(boolean parallelModel) {
+        
+        try {
+            Set<String> cubeIds = cubeIds();
+            
+            // Do execute
+            execute(new Mode(parallelModel), cubeIds, hzExecutorTimeout);
+            LOGGER.info("Set stream's mode {} on {}.", parallelModel, cubeIds);
+        } finally {
+            AGG_CONTEXT.remove();
+        }
+    }
+    
     @Override
     public Aggregations aggs(String... timeSeries) {
         

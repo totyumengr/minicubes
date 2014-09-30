@@ -59,6 +59,8 @@ public class MiniCube implements Aggregations {
     public static final int DUMMY_FILTER_DIM = -999999999;
     
     FactTable factTable;
+    
+    private volatile boolean parallelMode = true;
 
     // FIXME: Add dimension table
     public MiniCube(FactTable factTable) {
@@ -66,13 +68,21 @@ public class MiniCube implements Aggregations {
         this.factTable = factTable;
     }
     
-    // ---------------------------- Aggregation API ----------------------------
+    public void setParallelMode(boolean parallelMode) {
+        this.parallelMode = parallelMode;
+        LOGGER.info("Set stream's mode from {} to {} of {}", parallelMode, this.parallelMode, factTable.meta.name);
+    }
     
+    // ---------------------------- Aggregation API ----------------------------
+
     private Stream<Entry<Integer, Record>> filter(Map<String, List<Integer>> filterDims) {
         
         if (filterDims == null) {
             filterDims = new HashMap<String, List<Integer>>(0);
         }
+        
+        Stream<Entry<Integer, Record>> stream = parallelMode ? factTable.getRecords().entrySet().parallelStream() 
+                : factTable.getRecords().entrySet().stream();
         
         List<Predicate<Entry<Integer, Record>>> filters = new ArrayList<Predicate<Entry<Integer, Record>>>(filterDims.size());
         
@@ -108,16 +118,14 @@ public class MiniCube implements Aggregations {
 //                 }
             } else {
                 final RoaringBitmap m = ands;
-                Stream<Entry<Integer, Record>> stream = factTable.getRecords().entrySet().parallelStream().filter(
+                LOGGER.info("Filter record IDs count {}", ands.getCardinality());
+                return stream.filter(
                         new Predicate<Entry<Integer, Record>>() {
-
                             @Override
                             public boolean test(Entry<Integer, Record> t) {
                                 return m.contains(t.getKey());
                             }
                         });
-                LOGGER.info("Filter record IDs count {}", ands.getCardinality());
-                return stream;
             }
         }
         
@@ -126,7 +134,7 @@ public class MiniCube implements Aggregations {
             andFilter = andFilter.and(filter);
         }
         
-        return factTable.getRecords().entrySet().parallelStream().filter(andFilter);
+        return stream.filter(andFilter);
     }
 
     /**

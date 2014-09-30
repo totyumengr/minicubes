@@ -18,6 +18,7 @@ package com.github.totyumengr.minicubes.cluster;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.stream.Stream;
 
 import com.github.totyumengr.minicubes.core.Aggregations;
 import com.github.totyumengr.minicubes.core.MiniCube;
@@ -78,5 +79,11 @@ public interface TimeSeriesMiniCubeManager extends Aggregations {
      * @return aggregation object
      */
     Aggregations aggs(String... timeSeries);
+    
+    /**
+     * @param parallelModel specify Java8 Stream mode.
+     * {@link Stream#isParallel()}
+     */
+    void setMode(boolean parallelModel);
     
 }

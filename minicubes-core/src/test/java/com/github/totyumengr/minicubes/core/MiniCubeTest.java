@@ -88,7 +88,13 @@ public class MiniCubeTest {
         
         Map<String, List<Integer>> filter = new HashMap<String, List<Integer>>(1);
         filter.put("the_date", Arrays.asList(new Integer[] {20140606}));
-        for (int i = 0; i < 3; i++) {
+        miniCube.setParallelMode(false);
+        for (int i = 0; i < 5; i++) {
+            Assert.assertEquals("138240687.91500000", miniCube.sum("csm", filter).toString());
+            Thread.sleep(1000L);
+        }
+        miniCube.setParallelMode(true);
+        for (int i = 0; i < 5; i++) {
             Assert.assertEquals("138240687.91500000", miniCube.sum("csm", filter).toString());
             Thread.sleep(1000L);
         }
@@ -141,6 +147,7 @@ public class MiniCubeTest {
     @Test
     public void test_2_2_Group_tradeId() throws Throwable {
         
+        miniCube.setParallelMode(true);
         for (int i = 0; i < 5; i++) {
             Map<Integer, BigDecimal> group = miniCube.sum("csm", "tradeId", null);
             Assert.assertEquals(210, group.size());
@@ -151,6 +158,18 @@ public class MiniCubeTest {
             Assert.assertEquals("50708.85000000", group.get(505).toString());
             Thread.sleep(1000L);
         }
+        miniCube.setParallelMode(false);
+        for (int i = 0; i < 5; i++) {
+            Map<Integer, BigDecimal> group = miniCube.sum("csm", "tradeId", null);
+            Assert.assertEquals(210, group.size());
+            Assert.assertEquals("274795.77600000", group.get(-1).toString());
+            Assert.assertEquals("108080.82000000", group.get(3099).toString());
+            Assert.assertEquals("72360.92000000", group.get(3004).toString());
+            Assert.assertEquals("31828.81000000", group.get(502).toString());
+            Assert.assertEquals("50708.85000000", group.get(505).toString());
+            Thread.sleep(1000L);
+        }
+        miniCube.setParallelMode(true);
     }
     
     @Test
