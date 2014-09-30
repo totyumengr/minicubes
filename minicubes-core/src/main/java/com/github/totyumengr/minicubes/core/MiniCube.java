@@ -198,16 +198,26 @@ public class MiniCube implements Aggregations {
     public String toString() {
         return "MiniCube [factTable=" + factTable + "]";
     }
+    
+    private RoaringBitmap buildBitMap(Set<Integer> set) {
+        
+        RoaringBitmap result = new RoaringBitmap();
+        set.stream().forEach(x -> result.add(x));
+        return result;
+    }
 
     @Override
-    public Map<Integer, Set<Integer>> distinct(String distinctName, boolean isDim,
+    public Map<Integer, RoaringBitmap> distinct(String distinctName, boolean isDim,
             String groupByDimName, Map<String, List<Integer>> filterDims) {
         
         long enterTime = System.currentTimeMillis();
         Stream<Entry<Integer, Record>> stream = filter(filterDims);
-        Map<Integer, Set<Integer>> group = stream.collect(Collectors.groupingBy(p->p.getValue().getDim(groupByDimName), 
+        Map<Integer, RoaringBitmap> group = new HashMap<Integer, RoaringBitmap>();
+        // FIXME: indicator's distinct???
+        stream.collect(Collectors.groupingBy(p->p.getValue().getDim(groupByDimName), 
                 Collectors.mapping(isDim ? p->p.getValue().getDim(distinctName) 
-                        : p->p.getValue().getInd(distinctName).intValue(), Collectors.toSet())));
+                        : p->p.getValue().getInd(distinctName).intValue(), Collectors.toSet())))
+              .forEach((k, v) -> group.put(k, buildBitMap(v)));
         enterTime = System.currentTimeMillis() - enterTime;
         LOGGER.debug("Group by {} distinct {} filter {} result {} using {} ms.", groupByDimName, distinctName, 
                 filterDims, group, enterTime);
@@ -217,14 +227,14 @@ public class MiniCube implements Aggregations {
     }
 
     @Override
-    public Map<Integer, Long> discnt(String distinctName, boolean isDim, String groupByDimName,
+    public Map<Integer, Integer> discnt(String distinctName, boolean isDim, String groupByDimName,
             Map<String, List<Integer>> filterDims) {
         
         // Do distinct
-        Map<Integer, Set<Integer>> distinct = distinct(distinctName, isDim, groupByDimName, filterDims);
+        Map<Integer, RoaringBitmap> distinct = distinct(distinctName, isDim, groupByDimName, filterDims);
         // Count it
-        Map<Integer, Long> result = distinct.entrySet().stream().collect(
-                Collectors.toMap(e -> e.getKey(), e -> e.getValue().stream().count()));
+        Map<Integer, Integer> result = distinct.entrySet().stream().collect(
+                Collectors.toMap(e -> e.getKey(), e -> e.getValue().getCardinality()));
         
         LOGGER.debug("Distinct {} with filter {} results is {}", distinct, filterDims, result);
         return result;

@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import md.math.DoubleDouble;
 
@@ -31,6 +30,7 @@ import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
+import org.roaringbitmap.RoaringBitmap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
@@ -200,13 +200,13 @@ public class MiniCubeTest {
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
         Map<String, List<Integer>> filter = new HashMap<String, List<Integer>>(1);
-        Map<Integer, Set<Integer>> distinct = miniCube.distinct("postId", true, "tradeId", filter);
+        Map<Integer, RoaringBitmap> distinct = miniCube.distinct("postId", true, "tradeId", filter);
         stopWatch.stop();
         
         Assert.assertEquals(210, distinct.size());
-        Assert.assertEquals(3089, distinct.get(1601).size());
-        Assert.assertEquals(1825, distinct.get(1702).size());
-        Assert.assertEquals(2058, distinct.get(-2).size());
+        Assert.assertEquals(3089, distinct.get(1601).getCardinality());
+        Assert.assertEquals(1825, distinct.get(1702).getCardinality());
+        Assert.assertEquals(2058, distinct.get(-2).getCardinality());
         
         LOGGER.info(stopWatch.getTotalTimeSeconds() + " used for distinct result {}", distinct.toString());
     }
@@ -220,13 +220,13 @@ public class MiniCubeTest {
         filter.put("tradeId", Arrays.asList(new Integer[] {
             3205, 3206, 3207, 3208, 3209, 3210, 3212, 3299, 
             3204, 3203, 3202, 3201, 3211}));
-        Map<Integer, Set<Integer>> distinct = miniCube.distinct("postId", true, "tradeId", filter);
+        Map<Integer, RoaringBitmap> distinct = miniCube.distinct("postId", true, "tradeId", filter);
         stopWatch.stop();
         
         Assert.assertEquals(13, distinct.size());
-        Assert.assertEquals(277, distinct.get(3209).size());
-        Assert.assertEquals(186, distinct.get(3211).size());
-        Assert.assertEquals(464, distinct.get(3206).size());
+        Assert.assertEquals(277, distinct.get(3209).getCardinality());
+        Assert.assertEquals(186, distinct.get(3211).getCardinality());
+        Assert.assertEquals(464, distinct.get(3206).getCardinality());
         LOGGER.info(stopWatch.getTotalTimeSeconds() + " used for distinct result {}", distinct.toString());
         
     }

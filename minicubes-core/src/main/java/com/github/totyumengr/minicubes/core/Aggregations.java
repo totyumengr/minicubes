@@ -18,7 +18,8 @@ package com.github.totyumengr.minicubes.core;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+
+import org.roaringbitmap.RoaringBitmap;
 
 /**
  * <p>FIXME: Need re-design aggregations API, make it fluent and rich for calculating.
@@ -69,14 +70,14 @@ public interface Aggregations {
      * @param filterDims filter dimensions
      * @return result of distinct operation
      */
-    Map<Integer, Set<Integer>> distinct(String distinctName, boolean isDim, String groupByDimName, Map<String, List<Integer>> filterDims);
+    Map<Integer, RoaringBitmap> distinct(String distinctName, boolean isDim, String groupByDimName, Map<String, List<Integer>> filterDims);
     
     /** 
      * distinct-count calculation, depends {@link #distinct(String, String, Map)} operation.
      * 
      * @see com.github.totyumengr.minicubes.core.Aggregations#distinct(java.lang.String, java.lang.String, java.util.Map)
      */
-    Map<Integer, Long> discnt(String distinctName, boolean isDim,
+    Map<Integer, Integer> discnt(String distinctName, boolean isDim,
             String groupByDimName, Map<String, List<Integer>> filterDims);
     
 }

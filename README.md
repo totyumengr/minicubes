@@ -8,6 +8,15 @@ MiniCubes是一个高性能、分布式、内存型OLAP计算引擎（利用Java
 
 **上述函数均支持分布式计算特性**
 
+## 数据（以下基于CPU12核/内存128G的物理机和CPU8核/16G内存搭建的集群测试得出）：
+* 8G内存中可以存放26788234条记录（5个维度和4个指标），这些原始数据大小应该在1.5G。
+* 3台物理机+1台虚拟机搭建集群上载入大概9000w条数据：
+    1. 单指标全量sum耗时平均400ms左右；
+    2. 单指标全量groupby耗时平均600ms左右，结果7000条左右；
+    3. 单指标全量distinct耗时平均800ms左右，结果7000条左右；
+    4. 单指标全量distinct-count耗时平均800ms左右，结果7000条左右；
+    5. 虚拟机性能是物理机的1/3~1/2,所以请保持虚拟机载入数据量为物理机1/3~1/2；
+
 ## 本地开发：
 我们采用Spring Boot来构建“自包含”的应用，JDK1.8，Maven3：
 * minicubes-core目录下执行：mvn clean install -DskipTests=true
@@ -32,12 +41,4 @@ MiniCubes是一个高性能、分布式、内存型OLAP计算引擎（利用Java
 ## minicubes-cluster：
 本模块提供分布式计算能力，设计目标就是：高可用
 * 使用[MySQL Streaming](http://dev.mysql.com/doc/connector-j/en/connector-j-reference-implementation-notes.html "MySQL Streaming")来适应大结果集的加载。
-* 使用[Bitmap Index](https://github.com/lemire/RoaringBitmap "compressed bitset")来增强部分聚集方法性能。
-* 使用[DoubleDouble](http://tsusiatsoftware.net/dd/main.html "DoubleDouble")替换Java.math.BigDecimal来降低内存占用。
-
-## 数据（以下基于CPU12核，内存128G的物理机测试得出）：
-* 8G内存中可以存放26788234条记录（5个维度和4个指标），这些原始数据大小应该在1.5G。
-* 3台搭建集群上载入大概7000w条数据：
-    1. 单指标全量sum耗时平均400ms左右；
-    2. 单指标全量groupby耗时平均600ms左右，结果7000条左右；
-    3. 单指标全量distinctcount耗时平均800ms左右，结果7000条左右；
+* 使用[Hazelcast](https://github.com/hazelcast/hazelcast "Hazelcast")提供集群管理和分布式ExecutorService。
