@@ -70,6 +70,16 @@ public class BootTimeSeriesMiniCubeController {
         return status;
     }
     
+    @RequestMapping(value="/mode", method=RequestMethod.GET)
+    public @ResponseBody String mode(@NotBlank @RequestParam String timeSeries, @NotBlank @RequestParam boolean mode) {
+        
+        manager.aggs(timeSeries).setMode(mode);
+        
+        LOGGER.info("Success to set mode {} to {}", mode, timeSeries);
+        
+        return Boolean.toString(mode);
+    }
+    
     @RequestMapping(value="/reassign", method=RequestMethod.POST)
     public @ResponseBody String reassign(@NotBlank @RequestParam String cubeId, 
             @NotBlank @RequestParam String timeSeries) {

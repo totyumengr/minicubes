@@ -78,7 +78,7 @@ public interface TimeSeriesMiniCubeManager extends Aggregations {
      * @param timeSeries set execution on
      * @return aggregation object
      */
-    Aggregations aggs(String... timeSeries);
+    TimeSeriesMiniCubeManager aggs(String... timeSeries);
     
     /**
      * @param parallelModel specify Java8 Stream mode.

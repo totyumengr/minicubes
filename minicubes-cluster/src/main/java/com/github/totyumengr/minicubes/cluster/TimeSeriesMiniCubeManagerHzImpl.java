@@ -65,7 +65,6 @@ import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
-import com.github.totyumengr.minicubes.core.Aggregations;
 import com.github.totyumengr.minicubes.core.FactTable.FactTableBuilder;
 import com.github.totyumengr.minicubes.core.MiniCube;
 import com.hazelcast.config.Config;
@@ -585,7 +584,7 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
         @Override
         public Void call() throws Exception {
             
-            LOGGER.info("Set model {}", parallelMode);
+            LOGGER.info("Set model {} on {}", parallelMode, instance.getCluster().getLocalMember());
             if (impl.miniCube != null) {
                 impl.miniCube.setParallelMode(parallelMode);
             }
@@ -609,7 +608,7 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
     }
     
     @Override
-    public Aggregations aggs(String... timeSeries) {
+    public TimeSeriesMiniCubeManager aggs(String... timeSeries) {
         
         AGG_CONTEXT.set(timeSeries);
         return this;
