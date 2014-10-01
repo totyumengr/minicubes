@@ -70,7 +70,7 @@ public class MiniCube implements Aggregations {
     
     public void setParallelMode(boolean parallelMode) {
         this.parallelMode = parallelMode;
-        LOGGER.info("Set stream's mode from {} to {} of {}", parallelMode, this.parallelMode, factTable.meta.name);
+        LOGGER.info("Set stream's mode from {} to {} of {}", this.parallelMode, parallelMode, factTable.meta.name);
     }
     
     // ---------------------------- Aggregation API ----------------------------
