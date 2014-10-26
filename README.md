@@ -52,7 +52,6 @@ MiniCubes设计上追求极致简单，代码量只有2k行左右，未来也会
 ## 模块列表如下：
 * minicubes-core：提供基础的数据容器和聚合计算API。
 * minicubes-cluster：提供分布式聚合计算能力。
-* minicubes-lucene：TODO
 
 ## minicubes-core：
 本模块提供内存型Cube的操作接口，设计目标就是：高性能
