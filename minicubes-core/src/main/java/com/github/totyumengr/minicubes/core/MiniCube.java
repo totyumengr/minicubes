@@ -208,14 +208,18 @@ public class MiniCube implements Aggregations {
         Stream<Record> stream = filter(indName, filterDims);
         LOGGER.debug("Prepare predicate using {}ms.", System.currentTimeMillis() - enterTime);
         
-        BigDecimal sum = stream.map(
-            new Function<Record, BigDecimal>() {
-                @Override
-                public BigDecimal apply(Record t) {
-                    return t.getInd(indName);
-                }
-            }).reduce(new BigDecimal(0), (x, y) -> x.add(y))
+        BigDecimal sum = stream.map( t -> {
+            return t.getInd(indName);
+        }).reduce(new BigDecimal(0), (x, y) -> x.add(y))
                 .setScale(IND_SCALE, BigDecimal.ROUND_HALF_UP);
+//        BigDecimal sum = stream.map(
+//            new Function<Record, BigDecimal>() {
+//                @Override
+//                public BigDecimal apply(Record t) {
+//                    return t.getInd(indName);
+//                }
+//            }).reduce(new BigDecimal(0), (x, y) -> x.add(y))
+//                .setScale(IND_SCALE, BigDecimal.ROUND_HALF_UP);
         LOGGER.info("Sum {} filter {} result {} using {} ms.", indName, filterDims, sum, 
             System.currentTimeMillis() - enterTime);
         
