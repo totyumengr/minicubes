@@ -38,6 +38,9 @@ public class FactTable {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(FactTable.class);
     
+    /**
+     * meta test for submit class
+     */
     private Meta meta;
     /**
      * For speeding {@link FactTableBuilder}, clear after {@link FactTableBuilder#done()}.
