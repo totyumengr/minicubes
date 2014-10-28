@@ -4,7 +4,7 @@
 
 	<groupId>com.github.totyumengr</groupId>
 	<artifactId>minicubes-cluster</artifactId>
-	<version>0.1-SNAPSHOT</version>
+	<version>0.2-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<name>minicubes-cluster</name>
@@ -13,7 +13,7 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<java.version>1.8</java.version>
-		<minicubes.core.version>0.1-SNAPSHOT</minicubes.core.version>
+		<minicubes.core.version>0.2-SNAPSHOT</minicubes.core.version>
 		<hazelcast.version>3.2.3</hazelcast.version>
 	</properties>
 
@@ -42,6 +42,14 @@
 	</build>
 
 	<dependencies>
+		<dependency>
+			<groupId>com.codahale.metrics</groupId>
+			<artifactId>metrics-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>com.github.totyumengr</groupId>
 			<artifactId>minicubes-core</artifactId>
@@ -80,6 +88,10 @@
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.jolokia</groupId>
+			<artifactId>jolokia-core</artifactId>
+		</dependency>
 	</dependencies>
 
 	<repositories>
@@ -88,4 +100,5 @@
 			<url>http://repo.spring.io/ext-release-local</url>
 		</repository>
 	</repositories>
+	<description>Distributed in-memory cube base on java8 stream</description>
 </project>

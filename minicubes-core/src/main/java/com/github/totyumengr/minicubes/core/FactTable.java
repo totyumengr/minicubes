@@ -42,7 +42,7 @@ public class FactTable {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(FactTable.class);
     
-    private Meta meta;
+    Meta meta;
     /**
      * For speeding {@link FactTableBuilder}, clear after {@link FactTableBuilder#done()}.
      */
@@ -53,13 +53,13 @@ public class FactTable {
      */
     Map<String, RoaringBitmap> bitmapIndex = new HashMap<String, RoaringBitmap>();
     
-    private static class Meta {
+    static class Meta {
         
-        private String name;
+        String name;
         private List<String> columnNames = new ArrayList<>();
         private Map<String, Integer> columnNameIndexMap = new HashMap<String, Integer>();
         private int indStartIndex = -1;
-        
+
         @Override
         public String toString() {
             return "Meta [name=" + name + ", columnNames=" + columnNames
@@ -271,12 +271,21 @@ public class FactTable {
                 }
             });
             
+            int usedKb = 0;
+            int usedBytes = 0;
             for (Entry<String, RoaringBitmap> e : current.bitmapIndex.entrySet()) {
+                e.getValue().trim();
+                if (usedBytes > (1024 * 1024 * 1024)) {
+                    usedKb = usedKb + (usedBytes / 1024);
+                    usedBytes = 0;
+                }
+                usedBytes = usedBytes + e.getValue().getSizeInBytes();
                 LOGGER.debug("Index for {} of {} records", e.getKey(), e.getValue().getCardinality());
             }
-            LOGGER.info("Build completed: name {} with {} dimension columns, {} measure columns and {} records, {} indexes.", 
+            usedKb = usedKb + (usedBytes / 1024);
+            LOGGER.info("Build completed: name {} with {} dimension columns, {} measure columns and {} records, {} indexes used {} kb.", 
                     current.meta.name, current.meta.indStartIndex, current.meta.columnNames.size() - current.meta.indStartIndex, 
-                    current.records.size(), current.bitmapIndex.size());
+                    current.records.size(), current.bitmapIndex.size(), usedKb);
             
             return current;
         }

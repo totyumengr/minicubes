@@ -30,9 +30,11 @@ import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
+import org.roaringbitmap.RoaringBitmap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.util.StopWatch;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.totyumengr.minicubes.core.FactTable.FactTableBuilder;
@@ -86,7 +88,13 @@ public class MiniCubeTest {
         
         Map<String, List<Integer>> filter = new HashMap<String, List<Integer>>(1);
         filter.put("the_date", Arrays.asList(new Integer[] {20140606}));
-        for (int i = 0; i < 3; i++) {
+        miniCube.setParallelMode(false);
+        for (int i = 0; i < 5; i++) {
+            Assert.assertEquals("138240687.91500000", miniCube.sum("csm", filter).toString());
+            Thread.sleep(1000L);
+        }
+        miniCube.setParallelMode(true);
+        for (int i = 0; i < 5; i++) {
             Assert.assertEquals("138240687.91500000", miniCube.sum("csm", filter).toString());
             Thread.sleep(1000L);
         }
@@ -139,6 +147,7 @@ public class MiniCubeTest {
     @Test
     public void test_2_2_Group_tradeId() throws Throwable {
         
+        miniCube.setParallelMode(true);
         for (int i = 0; i < 5; i++) {
             Map<Integer, BigDecimal> group = miniCube.sum("csm", "tradeId", null);
             Assert.assertEquals(210, group.size());
@@ -149,6 +158,18 @@ public class MiniCubeTest {
             Assert.assertEquals("50708.85000000", group.get(505).toString());
             Thread.sleep(1000L);
         }
+        miniCube.setParallelMode(false);
+        for (int i = 0; i < 5; i++) {
+            Map<Integer, BigDecimal> group = miniCube.sum("csm", "tradeId", null);
+            Assert.assertEquals(210, group.size());
+            Assert.assertEquals("274795.77600000", group.get(-1).toString());
+            Assert.assertEquals("108080.82000000", group.get(3099).toString());
+            Assert.assertEquals("72360.92000000", group.get(3004).toString());
+            Assert.assertEquals("31828.81000000", group.get(502).toString());
+            Assert.assertEquals("50708.85000000", group.get(505).toString());
+            Thread.sleep(1000L);
+        }
+        miniCube.setParallelMode(true);
     }
     
     @Test
@@ -190,6 +211,43 @@ public class MiniCubeTest {
     public void test_4_1_DoubleDouble_Sum_20140606() throws Throwable {
         
         Assert.assertEquals("138240687.91500000", miniCube.sum("csm").toString());
+    }
+    
+    @Test
+    public void test_5_1_Distinct_20140606() throws Throwable {
+        
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
+        Map<String, List<Integer>> filter = new HashMap<String, List<Integer>>(1);
+        Map<Integer, RoaringBitmap> distinct = miniCube.distinct("postId", true, "tradeId", filter);
+        stopWatch.stop();
+        
+        Assert.assertEquals(210, distinct.size());
+        Assert.assertEquals(3089, distinct.get(1601).getCardinality());
+        Assert.assertEquals(1825, distinct.get(1702).getCardinality());
+        Assert.assertEquals(2058, distinct.get(-2).getCardinality());
+        
+        LOGGER.info(stopWatch.getTotalTimeSeconds() + " used for distinct result {}", distinct.toString());
+    }
+    
+    @Test
+    public void test_5_2_DistinctCount_20140606() throws Throwable {
+        
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
+        Map<String, List<Integer>> filter = new HashMap<String, List<Integer>>(1);
+        filter.put("tradeId", Arrays.asList(new Integer[] {
+            3205, 3206, 3207, 3208, 3209, 3210, 3212, 3299, 
+            3204, 3203, 3202, 3201, 3211}));
+        Map<Integer, RoaringBitmap> distinct = miniCube.distinct("postId", true, "tradeId", filter);
+        stopWatch.stop();
+        
+        Assert.assertEquals(13, distinct.size());
+        Assert.assertEquals(277, distinct.get(3209).getCardinality());
+        Assert.assertEquals(186, distinct.get(3211).getCardinality());
+        Assert.assertEquals(464, distinct.get(3206).getCardinality());
+        LOGGER.info(stopWatch.getTotalTimeSeconds() + " used for distinct result {}", distinct.toString());
+        
     }
     
 }

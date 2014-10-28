@@ -37,6 +37,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -45,6 +46,7 @@ import javax.sql.DataSource;
 
 import md.math.DoubleDouble;
 
+import org.roaringbitmap.RoaringBitmap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,7 +65,6 @@ import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
-import com.github.totyumengr.minicubes.core.Aggregations;
 import com.github.totyumengr.minicubes.core.FactTable.FactTableBuilder;
 import com.github.totyumengr.minicubes.core.MiniCube;
 import com.hazelcast.config.Config;
@@ -78,7 +79,6 @@ import com.hazelcast.config.TcpIpConfig;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.HazelcastInstanceAware;
-import com.hazelcast.core.ILock;
 import com.hazelcast.core.IMap;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MemberAttributeEvent;
@@ -140,6 +140,12 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
         Config hazelcastConfig = new Config("minicubes-cluster");
         hazelcastConfig.setProperty("hazelcast.system.log.enabled", "false");
         hazelcastConfig.setProperty("hazelcast.logging.type", "slf4j");
+        hazelcastConfig.setProperty("hazelcast.jmx", "true");
+        hazelcastConfig.setProperty("hazelcast.jmx.detailed", "true");
+        if (StringUtils.hasText(env.getRequiredProperty("hazelcast.operation.thread.count"))) {
+            hazelcastConfig.setProperty("hazelcast.operation.thread.count", 
+                    env.getRequiredProperty("hazelcast.operation.thread.count"));
+        }
         
         hazelcastConfig.setGroupConfig(new GroupConfig(hzGroupName = env.getRequiredProperty("hazelcast.group.name"), 
                 env.getRequiredProperty("hazelcast.group.password")));
@@ -202,6 +208,9 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
         
         // Handle new member
         LOGGER.info("Handle new member {} came in after 1 minute.", instance.getCluster().getLocalMember());
+        // Set member's status to load-pending, this will effect #reassignRole
+        instance.getCluster().getLocalMember().setBooleanAttribute("load-pending", true);
+        
         handleNewMember.schedule(new Runnable() {
                 @Override
                 public void run() {
@@ -219,25 +228,23 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
         LOGGER.info("Minicube manager status {}", ObjectUtils.getDisplayString(miniCubeManager));
         
         String key = member.getSocketAddress().toString();
-        ILock lock = instance.getLock("miniCubeLock");
-        lock.lock();
-        try {
-            if (miniCubeManager.containsKey(key) && !miniCubeManager.get(key).startsWith("?")) {
-                // Maybe node-restart
-                LOGGER.info("A node{} restarted, so we need rebuild cube{}", key, miniCubeManager.get(key));
-                // Reassign task.
-                reassignRole(miniCubeManager.get(key), miniCubeManager.get(key).split("::")[0]);
-            } else {
-                // First time join into cluster
-                String id = "?" + "::" + hzGroupName + "@" + key;
-                miniCubeManager.put(key, id);
-                
-                member.setStringAttribute("cubeId", id);
-                LOGGER.info("Add {} into cluster {}", id, hzGroupName);
-            }
-        } finally {
-            lock.unlock();
+        // FIXME: load-pending status need refactor
+        instance.getCluster().getLocalMember().setBooleanAttribute("load-pending", false);
+        
+        if (miniCubeManager.containsKey(key) && !miniCubeManager.get(key).startsWith("?")) {
+            // Maybe node-restart
+            LOGGER.info("A node{} restarted, so we need rebuild cube{}", key, miniCubeManager.get(key));
+            // Reassign task.
+            reassignRole(miniCubeManager.get(key), miniCubeManager.get(key).split("::")[0]);
+        } else {
+            // First time join into cluster
+            String id = "?" + "::" + hzGroupName + "@" + key;
+            miniCubeManager.put(key, id);
+            
+            member.setStringAttribute("cubeId", id);
+            LOGGER.info("Add {} into cluster {}", id, hzGroupName);
         }
+        LOGGER.info("Set load-pending status to false, enable reassign feature on {}", member);
     }
     
     // ------------------------------ Implementation ------------------------------
@@ -346,6 +353,16 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
                         + "only permitted to run in local member.");
             }
             
+            // Check load-pending status
+            boolean loadPending = localMember.getBooleanAttribute("load-pending");
+            if (loadPending) {
+                String newCubeId = timeSeries + "::" + impl.hzGroupName + "@" + member;
+                IMap<String, String> miniCubeManager = instance.getMap(MINICUBE_MANAGER);
+                miniCubeManager.put(member, newCubeId);
+                LOGGER.warn("Only change relationship {} {} when load-pending status.", member, newCubeId);
+                return newCubeId;
+            }
+            
             LOGGER.info("Start fetching data and building cube {}, {}", cubeId, timeSeries);
             
             JdbcTemplate template = new JdbcTemplate(impl.dataSource);
@@ -358,7 +375,30 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
                 AtomicInteger actualSplitIndex = new AtomicInteger();
                 
                 List<SqlParameterValue> params = new ArrayList<SqlParameterValue>();
-                if (timeSeries.length() == 8) {
+                if (timeSeries.length() == 8 && timeSeries.toUpperCase().contains("X")) {
+                    // Means one XUN's data
+                    String m = timeSeries.toUpperCase().split("X")[0];
+                    int x = Integer.parseInt(timeSeries.toUpperCase().split("X")[1]);
+                    Assert.isTrue(x > 0 && x < 4, "Only support pattern yyyymmX[1-3]. " + timeSeries);
+                    int s = (x - 1) * 10 + 1;
+                    SqlParameterValue start = new SqlParameterValue(SqlTypeValue.TYPE_UNKNOWN, m + (s > 9 ? s : ("0" + s)));
+                    SqlParameterValue end = null;
+                    switch (x) {
+                    case 1:
+                        end = new SqlParameterValue(SqlTypeValue.TYPE_UNKNOWN, m + "10");
+                        break;
+                    case 2:
+                        end = new SqlParameterValue(SqlTypeValue.TYPE_UNKNOWN, m + "20");
+                        break;
+                    case 3:
+                        end = new SqlParameterValue(SqlTypeValue.TYPE_UNKNOWN, m + "31");
+                        break;
+                    default:
+                        break;
+                    }
+                    params.add(start);
+                    params.add(end);
+                } else if (timeSeries.length() == 8) {
                     // Means one day's data
                     SqlParameterValue v = new SqlParameterValue(SqlTypeValue.TYPE_UNKNOWN, timeSeries);
                     params.add(v);
@@ -527,23 +567,101 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
                 .map(e -> e.getStringAttribute("cubeId")).collect(Collectors.toList());
     }
     
+    private static class Mode extends Executee implements Callable<Void> {
+        
+        /**
+         * 
+         */
+        private static final long serialVersionUID = 1L;
+        
+        private boolean parallelMode;
+        
+        public Mode(boolean parallelMode) {
+            super();
+            this.parallelMode = parallelMode;
+        }
+
+        @Override
+        public Void call() throws Exception {
+            
+            LOGGER.info("Set model {} on {}", parallelMode, instance.getCluster().getLocalMember());
+            if (impl.miniCube != null) {
+                impl.miniCube.setParallelMode(parallelMode);
+            }
+            return null;
+        }
+        
+    }
+    
     @Override
-    public Aggregations aggs(String... timeSeries) {
+    public void setMode(boolean parallelModel) {
+        
+        try {
+            Set<String> cubeIds = cubeIds();
+            
+            // Do execute
+            execute(new Mode(parallelModel), cubeIds, hzExecutorTimeout);
+            LOGGER.info("Set stream's mode {} on {}.", parallelModel, cubeIds);
+        } finally {
+            AGG_CONTEXT.remove();
+        }
+    }
+    
+    @Override
+    public TimeSeriesMiniCubeManager aggs(String... timeSeries) {
         
         AGG_CONTEXT.set(timeSeries);
         return this;
     }
     
-    private static class Sum implements Callable<BigDecimal>, HazelcastInstanceAware, Serializable {
+    private Set<String> cubeIds() {
+        
+        Set<String> cubeIds = new LinkedHashSet<String>();
+        String[] timeSeries = AGG_CONTEXT.get();
+        if (timeSeries == null || timeSeries.length == 0) {
+            cubeIds.addAll(allCubeIds());
+        } else {
+            for (String t : timeSeries) {
+                cubeIds.addAll(cubeIds(t));
+            }
+            if (cubeIds.isEmpty()) {
+                throw new IllegalArgumentException("Can not find availd cubes for given time series "
+                        + ObjectUtils.getDisplayString(timeSeries));
+            }
+        }
+        LOGGER.info("Agg on cubes {}", ObjectUtils.getDisplayString(cubeIds));
+        
+        return cubeIds;
+    }
+    
+    private static abstract class Executee implements HazelcastInstanceAware, Serializable {
 
         /**
          * 
          */
         private static final long serialVersionUID = 1L;
         
-        private transient HazelcastInstance instance;
-        private transient TimeSeriesMiniCubeManagerHzImpl impl;
+        protected transient HazelcastInstance instance;
+        protected transient TimeSeriesMiniCubeManagerHzImpl impl;
         
+        public Executee() {
+            super();
+        }
+
+        @Override
+        public void setHazelcastInstance(HazelcastInstance hazelcastInstance) {
+            this.instance = hazelcastInstance;
+            impl = (TimeSeriesMiniCubeManagerHzImpl) instance.getUserContext().get("this");
+        }
+        
+    }
+    
+    private static class Sum extends Executee implements Callable<BigDecimal> {
+        
+        /**
+         * 
+         */
+        private static final long serialVersionUID = 1L;
         private String indName;
         private Map<String, List<Integer>> filterDims;
         
@@ -551,12 +669,6 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
             super();
             this.indName = indName;
             this.filterDims = filterDims;
-        }
-
-        @Override
-        public void setHazelcastInstance(HazelcastInstance hazelcastInstance) {
-            this.instance = hazelcastInstance;
-            impl = (TimeSeriesMiniCubeManagerHzImpl) instance.getUserContext().get("this");
         }
 
         @Override
@@ -577,29 +689,18 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
     @Override
     public BigDecimal sum(String indName, Map<String, List<Integer>> filterDims) {
         
-        Set<String> cubeIds = new LinkedHashSet<String>();
         try {
-            String[] timeSeries = AGG_CONTEXT.get();
-            if (timeSeries == null || timeSeries.length == 0) {
-                cubeIds.addAll(allCubeIds());
-            } else {
-                for (String t : timeSeries) {
-                    cubeIds.addAll(cubeIds(t));
-                }
-                if (cubeIds.isEmpty()) {
-                    throw new IllegalArgumentException("Can not find availd cubes for given time series "
-                            + ObjectUtils.getDisplayString(timeSeries));
-                }
-            }
-            LOGGER.info("Agg on cubes {}", ObjectUtils.getDisplayString(cubeIds));
+            Set<String> cubeIds = cubeIds();
             
             // Do execute
             List<BigDecimal> results = execute(new Sum(indName, filterDims), cubeIds, hzExecutorTimeout);
-            LOGGER.info("Sum {} on {} results is {}", indName, cubeIds, results);
+            LOGGER.debug("Sum {} on {} results is {}", indName, cubeIds, results);
             
-            return results.stream().reduce(new BigDecimal(0), (x, y) -> x.add(y))
+            BigDecimal result = results.stream().reduce(new BigDecimal(0), (x, y) -> x.add(y))
                     .setScale(IND_SCALE, BigDecimal.ROUND_HALF_UP);
+            LOGGER.info("Sum {} on {} result is {}", indName, cubeIds, result);
             
+            return result;
         } finally {
             AGG_CONTEXT.remove();
         }
@@ -610,15 +711,12 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
      * @author mengran
      *
      */
-    private static class Sum2 implements Callable<Map<Integer, BigDecimal>>, HazelcastInstanceAware, Serializable {
+    private static class Sum2 extends Executee implements Callable<Map<Integer, BigDecimal>> {
 
         /**
          * 
          */
         private static final long serialVersionUID = 1L;
-        
-        private transient HazelcastInstance instance;
-        private transient TimeSeriesMiniCubeManagerHzImpl impl;
         
         private String indName;
         private Map<String, List<Integer>> filterDims;
@@ -629,12 +727,6 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
             this.indName = indName;
             this.filterDims = filterDims;
             this.groupDimName = groupDimName;
-        }
-
-        @Override
-        public void setHazelcastInstance(HazelcastInstance hazelcastInstance) {
-            this.instance = hazelcastInstance;
-            impl = (TimeSeriesMiniCubeManagerHzImpl) instance.getUserContext().get("this");
         }
 
         @Override
@@ -650,21 +742,8 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
     public Map<Integer, BigDecimal> sum(String indName, String groupByDimName,
             Map<String, List<Integer>> filterDims) {
         
-        Set<String> cubeIds = new LinkedHashSet<String>();
         try {
-            String[] timeSeries = AGG_CONTEXT.get();
-            if (timeSeries == null || timeSeries.length == 0) {
-                cubeIds.addAll(allCubeIds());
-            } else {
-                for (String t : timeSeries) {
-                    cubeIds.addAll(cubeIds(t));
-                }
-                if (cubeIds.isEmpty()) {
-                    throw new IllegalArgumentException("Can not find availd cubes for given time series "
-                            + ObjectUtils.getDisplayString(timeSeries));
-                }
-            }
-            LOGGER.info("Agg on cubes {}", ObjectUtils.getDisplayString(cubeIds));
+            Set<String> cubeIds = cubeIds();
             
             // Do execute
             List<Map<Integer, BigDecimal>> results = execute(new Sum2(indName, groupByDimName, filterDims), 
@@ -679,8 +758,91 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
                     t.forEach((k, v) -> result.merge(k, v, BigDecimal::add));
                 }
             });
-            LOGGER.info("Sum {} on {} with filter {} results is {}", indName, cubeIds, filterDims, result);
+            LOGGER.debug("Sum {} on {} with filter {} results is {}", indName, cubeIds, filterDims, result);
             
+            return result;
+        } finally {
+            AGG_CONTEXT.remove();
+        }
+    }
+    
+    /**
+     * @author mengran
+     *
+     */
+    private static class Distinct extends Executee implements Callable<Map<Integer, RoaringBitmap>> {
+
+        /**
+         * 
+         */
+        private static final long serialVersionUID = 1L;
+        
+        private String indName;
+        private Map<String, List<Integer>> filterDims;
+        private String groupDimName;
+        private boolean isDim;
+        
+        public Distinct(String indName, boolean isDim, String groupDimName, Map<String, List<Integer>> filterDims) {
+            super();
+            this.indName = indName;
+            this.filterDims = filterDims;
+            this.groupDimName = groupDimName;
+            this.isDim = isDim;
+        }
+
+        @Override
+        public Map<Integer, RoaringBitmap> call() throws Exception {
+            
+            LOGGER.info("Distinct on {}", instance.getCluster().getLocalMember());
+            return impl.miniCube == null ? null : impl.miniCube.distinct(indName, isDim, groupDimName, filterDims);
+        }
+        
+    }
+
+    @Override
+    public Map<Integer, RoaringBitmap> distinct(String distinctName, boolean isDim,
+            String groupByDimName, Map<String, List<Integer>> filterDims) {
+        
+        try {
+            Set<String> cubeIds = cubeIds();
+            
+            // Do execute
+            List<Map<Integer, RoaringBitmap>> results = execute(new Distinct(distinctName, isDim, groupByDimName, filterDims), 
+                    cubeIds, hzExecutorTimeout);
+            LOGGER.debug("Distinct {} on {} with filter {} results is {}", distinctName, cubeIds, filterDims, results);
+            
+            Map<Integer, RoaringBitmap> result = new HashMap<Integer, RoaringBitmap>(results.size());
+            results.stream().forEach(new Consumer<Map<Integer, RoaringBitmap>>() {
+
+                @Override
+                public void accept(Map<Integer, RoaringBitmap> t) {
+                    t.forEach((k, v) -> result.merge(k, v, new BiFunction<RoaringBitmap, RoaringBitmap, RoaringBitmap>() {
+
+                        @Override
+                        public RoaringBitmap apply(RoaringBitmap t, RoaringBitmap u) {
+                            return RoaringBitmap.or(t, u);
+                        }
+                    }));
+                }
+            });
+            LOGGER.debug("Distinct {} on {} with filter {} results is {}", distinctName, cubeIds, filterDims, result);
+            return result;
+        } finally {
+            AGG_CONTEXT.remove();
+        }
+    }
+
+    @Override
+    public Map<Integer, Integer> discnt(String distinctName, boolean isDim, String groupByDimName,
+            Map<String, List<Integer>> filterDims) {
+        
+        try {
+            Map<Integer, RoaringBitmap> distinct = distinct(distinctName, isDim, groupByDimName, filterDims);
+            // Count it.
+            Map<Integer, Integer> result = distinct.entrySet().stream().collect(
+                    Collectors.toMap(e -> e.getKey(), e -> e.getValue().getCardinality()));
+            LOGGER.debug("Distinct {} on {} with filter {} results is {}", distinctName, AGG_CONTEXT.get(), filterDims, result);
+            LOGGER.info("Distinct {} on {} with filter {} results size is {}", distinctName, AGG_CONTEXT.get(), filterDims, result.size());
             return result;
         } finally {
             AGG_CONTEXT.remove();

@@ -16,13 +16,19 @@
 package com.github.totyumengr.minicubes.cluster;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import org.hibernate.validator.constraints.NotBlank;
+import org.roaringbitmap.RoaringBitmap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,6 +70,16 @@ public class BootTimeSeriesMiniCubeController {
         return status;
     }
     
+    @RequestMapping(value="/mode", method=RequestMethod.GET)
+    public @ResponseBody String mode(@NotBlank @RequestParam String timeSeries, @NotBlank @RequestParam boolean mode) {
+        
+        manager.aggs(timeSeries).setMode(mode);
+        
+        LOGGER.info("Success to set mode {} to {}", mode, timeSeries);
+        
+        return Boolean.toString(mode);
+    }
+    
     @RequestMapping(value="/reassign", method=RequestMethod.POST)
     public @ResponseBody String reassign(@NotBlank @RequestParam String cubeId, 
             @NotBlank @RequestParam String timeSeries) {
@@ -81,10 +97,11 @@ public class BootTimeSeriesMiniCubeController {
             @NotBlank @RequestParam String... timeSeries) throws Throwable {
         
         LOGGER.info("Try to sum {} on {} with filter {}.", indName, ObjectUtils.getDisplayString(timeSeries), filterDims);
+        long timing = System.currentTimeMillis();
         Map<String, List<Integer>> filter = (filterDims == null || "".equals(filterDims)) ? null
                 : objectMapper.readValue(filterDims, new TypeReference<Map<String, List<Integer>>>() {});
         BigDecimal sum = manager.aggs(timeSeries).sum(indName, filter);
-        LOGGER.info("Sucess to sum {} on {} result is {}.", indName, timeSeries, sum);
+        LOGGER.info("Sucess to sum {} on {} result is {} using {}ms.", indName, timeSeries, sum, System.currentTimeMillis() - timing);
         
         return sum;
     }
@@ -92,15 +109,61 @@ public class BootTimeSeriesMiniCubeController {
     @RequestMapping(value="/groupsum", method={RequestMethod.POST, RequestMethod.GET})
     public @ResponseBody Map<Integer, BigDecimal> groupsum(@NotBlank @RequestParam String indName, 
             @RequestParam(required=false) String filterDims,
-            @RequestParam(required=false) String groupbyDim,
+            @RequestParam String groupbyDim,
             @NotBlank @RequestParam String... timeSeries) throws Throwable {
         
         LOGGER.info("Try to sum {} on {} with filter {}.", indName, ObjectUtils.getDisplayString(timeSeries), filterDims);
+        long timing = System.currentTimeMillis();
         Map<String, List<Integer>> filter = (filterDims == null || "".equals(filterDims)) ? null
                 : objectMapper.readValue(filterDims, new TypeReference<Map<String, List<Integer>>>() {});
         Map<Integer, BigDecimal> sum = manager.aggs(timeSeries).sum(indName, groupbyDim, filter);
-        LOGGER.info("Sucess to sum {} on {} result is {}.", indName, timeSeries, sum);
+        LOGGER.info("Sucess to sum {} on {} result size is {} using {}ms.", indName, timeSeries, sum.size(), System.currentTimeMillis() - timing);
+        LOGGER.debug("Sucess to sum {} on {} result is {}.", indName, timeSeries, sum);
         
         return sum;
+    }
+    
+    @RequestMapping(value="/distinct", method={RequestMethod.POST, RequestMethod.GET})
+    public @ResponseBody Map<Integer, Set<Integer>> distinct(@NotBlank @RequestParam String indName,
+            @NotBlank @RequestParam(required=false) Boolean isDim,
+            @RequestParam(required=false) String filterDims,
+            @RequestParam String groupbyDim,
+            @NotBlank @RequestParam String... timeSeries) throws Throwable {
+        
+        LOGGER.info("Try to distinct {} on {} with filter {}.", indName, ObjectUtils.getDisplayString(timeSeries), filterDims);
+        long timing = System.currentTimeMillis();
+        Map<String, List<Integer>> filter = (filterDims == null || "".equals(filterDims)) ? null
+                : objectMapper.readValue(filterDims, new TypeReference<Map<String, List<Integer>>>() {});
+        Map<Integer, RoaringBitmap> distinct = manager.aggs(timeSeries).distinct(indName, isDim == null ? true : isDim, groupbyDim, filter);
+        LOGGER.info("Sucess to distinct {} on {} result size is {} using {}ms.", indName, timeSeries, distinct.size(), System.currentTimeMillis() - timing);
+        LOGGER.debug("Sucess to distinct {} on {} result is {}.", indName, timeSeries, distinct);
+        
+        Map<Integer, Set<Integer>> result = new HashMap<Integer, Set<Integer>>();
+        distinct.forEach(new BiConsumer<Integer, RoaringBitmap>() {
+            @Override
+            public void accept(Integer t, RoaringBitmap u) {
+                result.put(t, Arrays.stream(u.toArray()).collect(HashSet<Integer> :: new, Set :: add, (l, r) -> {}));
+            }
+        });
+        
+        return result;
+    }
+    
+    @RequestMapping(value="/distinctcount", method={RequestMethod.POST, RequestMethod.GET})
+    public @ResponseBody Map<Integer, Integer> distinctCount(@NotBlank @RequestParam String indName,
+            @NotBlank @RequestParam(required=false) Boolean isDim,
+            @RequestParam(required=false) String filterDims,
+            @RequestParam String groupbyDim,
+            @NotBlank @RequestParam String... timeSeries) throws Throwable {
+        
+        LOGGER.info("Try to distinct-count {} on {} with filter {}.", indName, ObjectUtils.getDisplayString(timeSeries), filterDims);
+        long timing = System.currentTimeMillis();
+        Map<String, List<Integer>> filter = (filterDims == null || "".equals(filterDims)) ? null
+                : objectMapper.readValue(filterDims, new TypeReference<Map<String, List<Integer>>>() {});
+        Map<Integer, Integer> distinct = manager.aggs(timeSeries).discnt(indName, isDim == null ? true : isDim, groupbyDim, filter);
+        LOGGER.info("Sucess to distinct-count {} on {} result size is {} using {}ms.", indName, timeSeries, distinct.size(), System.currentTimeMillis() - timing);
+        LOGGER.debug("Sucess to distinct-count {} on {} result is {}.", indName, timeSeries, distinct);
+        
+        return distinct;
     }
 }

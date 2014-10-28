@@ -19,6 +19,8 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
+import org.roaringbitmap.RoaringBitmap;
+
 /**
  * <p>FIXME: Need re-design aggregations API, make it fluent and rich for calculating.
  * 
@@ -58,5 +60,24 @@ public interface Aggregations {
      * @return result of sum operation
      */
     Map<Integer, BigDecimal> sum(String indName, String groupByDimName, Map<String, List<Integer>> filterDims);
+
+    /**
+     * Distinct calculation of given indicate with filter and grouper. It equal to "SELECT DISTINCT {indName} FROM {fact table of cube} WHERE 
+     * {dimension1 IN (a, b, c)} AND {dimension2 IN (d, e, f)} group by {dimension3}".
+     * @param distinctName name for distinct
+     * @param isDim distinct dimension or not
+     * @param groupByDimName group by dimensions
+     * @param filterDims filter dimensions
+     * @return result of distinct operation
+     */
+    Map<Integer, RoaringBitmap> distinct(String distinctName, boolean isDim, String groupByDimName, Map<String, List<Integer>> filterDims);
+    
+    /** 
+     * distinct-count calculation, depends {@link #distinct(String, String, Map)} operation.
+     * 
+     * @see com.github.totyumengr.minicubes.core.Aggregations#distinct(java.lang.String, java.lang.String, java.util.Map)
+     */
+    Map<Integer, Integer> discnt(String distinctName, boolean isDim,
+            String groupByDimName, Map<String, List<Integer>> filterDims);
     
 }

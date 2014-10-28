@@ -1,0 +1,10 @@
+
+   minicubes
+   Copyright 2014 Ran Meng
+
+   This product includes software developed at
+   The Apache Software Foundation (http://www.apache.org/).
+
+   This software contains code derived written by Martin Davis, 
+   the original source code is available from
+      http://tsusiatsoftware.net/dd/main.html
