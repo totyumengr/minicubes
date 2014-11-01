@@ -16,12 +16,13 @@
 package com.github.totyumengr.minicubes.core;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 import md.math.DoubleDouble;
@@ -49,9 +50,14 @@ public class FactTable {
     private Map<Integer, Record> records;
     
     /**
-     * Bitmap index for speed up aggregated calculation
+     * Bitmap index for speed up aggregated calculation. Key is columnNames + ":" + dimValue
      */
-    Map<String, RoaringBitmap> bitmapIndex = new HashMap<String, RoaringBitmap>();
+    private Map<String, RoaringBitmap> bitmapIndex = new HashMap<String, RoaringBitmap>();
+    
+    /**
+     * Protect fact-table merge action.
+     */
+    private ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
     
     static class Meta {
         
@@ -291,11 +297,53 @@ public class FactTable {
     }
     
     /**
-     * @return Unmodifiable records.
-     * @see Collections#unmodifiableCollection(Collection)
+     * @return records of key "records" and indexes of key "bitmapIndex".
      */
-    Map<Integer, Record> getRecords() {
-        return records;
+    Map<String, Object> getData() {
+        try {
+            readWriteLock.readLock().lock();
+            Map<String, Object> data = new HashMap<String, Object>(2);
+            data.put("records", records);
+            data.put("bitmapIndex", bitmapIndex);
+            return data;    
+        } finally {
+            readWriteLock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * @param merge fact-table will be merge into.
+     * @throws IllegalArgumentException when parameter is null
+     * @since 0.2
+     */
+    void merge(FactTable merge) {
+        
+        if (merge == null) {
+            throw new IllegalArgumentException();
+        }
+        LOGGER.info("Try to merge {} into {}.", merge, this);
+        try {
+            readWriteLock.writeLock().lock();
+            // Start merge
+            for (Entry<Integer, Record> entry : merge.records.entrySet()) {
+                this.records.put(entry.getKey(), entry.getValue());
+            }
+            for (Entry<String, RoaringBitmap> entry : merge.bitmapIndex.entrySet()) {
+                this.bitmapIndex.merge(entry.getKey(), entry.getValue(), 
+                        new BiFunction<RoaringBitmap, RoaringBitmap, RoaringBitmap>() {
+
+                    @Override
+                    public RoaringBitmap apply(RoaringBitmap t, RoaringBitmap u) {
+                        return RoaringBitmap.or(t, u);
+                    }
+                });
+            }
+        } finally {
+            readWriteLock.writeLock().unlock();
+        }
+        
+        LOGGER.info("Merge {} successfully into {}.", merge, this);
+        return;
     }
 
     /**
@@ -331,7 +379,7 @@ public class FactTable {
     
     @Override
     public String toString() {
-        return "FactTable [meta=" + meta + ", records=" + records + "]";
+        return "FactTable [meta=" + meta + ", records=" + records.size() + "]";
     }
     
 }

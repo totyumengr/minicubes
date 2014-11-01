@@ -250,4 +250,28 @@ public class MiniCubeTest {
         
     }
     
+    @Test
+    public void test_6_1_merge() {
+        
+        FactTableBuilder builder = new FactTableBuilder().build("MiniCubeTest-merge", 4)
+                .addDimColumns(Arrays.asList(new String[] {"the_date", "tradeId", "productLineId", "postId"}))
+                .addIndColumns(Arrays.asList(new String[] {"csm", "cash", "click", "shw"}));
+        
+        builder.addDimDatas(Integer.MAX_VALUE, Arrays.asList(new Integer[] {20140607, 1, 1, 1}));
+        builder.addIndDatas(Integer.MAX_VALUE, Arrays.asList(new DoubleDouble[] {
+                new DoubleDouble(123.123), new DoubleDouble(124.124), new DoubleDouble(123), new DoubleDouble(124)}));
+        FactTable merge = builder.done();
+        // Do merge
+        BigDecimal original = miniCube.sum("csm");
+        miniCube.merge(new MiniCube(merge));
+        
+        Assert.assertEquals(original.add(new BigDecimal(123.123).setScale(
+                Aggregations.IND_SCALE, BigDecimal.ROUND_HALF_UP)), miniCube.sum("csm"));
+        
+        Map<String, List<Integer>> filter = new HashMap<String, List<Integer>>(1);
+        filter.put("the_date", Arrays.asList(new Integer[] {20140606}));
+        miniCube.setParallelMode(false);
+        Assert.assertEquals("138240687.91500000", miniCube.sum("csm", filter).toString());
+    }
+    
 }

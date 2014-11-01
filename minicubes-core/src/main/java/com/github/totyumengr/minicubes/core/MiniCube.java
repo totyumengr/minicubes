@@ -73,6 +73,14 @@ public class MiniCube implements Aggregations {
         LOGGER.info("Set stream's mode from {} to {} of {}", this.parallelMode, parallelMode, factTable.meta.name);
     }
     
+    public void merge(MiniCube merge) {
+        if (merge == null) {
+            LOGGER.info("Do nothing when merge object is null");
+            return;
+        }
+        this.factTable.merge(merge.factTable);
+    }
+    
     // ---------------------------- Aggregation API ----------------------------
 
     private Stream<Entry<Integer, Record>> filter(Map<String, List<Integer>> filterDims) {
@@ -81,8 +89,14 @@ public class MiniCube implements Aggregations {
             filterDims = new HashMap<String, List<Integer>>(0);
         }
         
-        Stream<Entry<Integer, Record>> stream = parallelMode ? factTable.getRecords().entrySet().parallelStream() 
-                : factTable.getRecords().entrySet().stream();
+        Map<String, Object> data = factTable.getData();
+        @SuppressWarnings("unchecked")
+        Map<Integer, Record> records = (Map<Integer, Record>) data.get("records");
+        @SuppressWarnings("unchecked")
+        Map<String, RoaringBitmap> bitmapIndex = (Map<String, RoaringBitmap>) data.get("bitmapIndex"); 
+        
+        Stream<Entry<Integer, Record>> stream = parallelMode ? records.entrySet().parallelStream() 
+                : records.entrySet().stream();
         
         List<Predicate<Entry<Integer, Record>>> filters = new ArrayList<Predicate<Entry<Integer, Record>>>(filterDims.size());
         
@@ -90,7 +104,7 @@ public class MiniCube implements Aggregations {
         for (Entry<String, List<Integer>> entry : filterDims.entrySet()) {
             RoaringBitmap ors = new RoaringBitmap();
             for (Integer v : entry.getValue()) {
-                RoaringBitmap o = factTable.bitmapIndex.get(entry.getKey() + ":" + v);
+                RoaringBitmap o = bitmapIndex.get(entry.getKey() + ":" + v);
                 if (o != null) {
                     ors.or(o);
                 } else {
