@@ -22,13 +22,6 @@
 		<version>1.1.4.RELEASE</version>
 	</parent>
 
-<!-- 	<scm>
-		<connection>scm:git:git://github.com/totyumengr/minicubes.git</connection>
-		<url>http://github.com/totyumengr/minicubes</url>
-		<developerConnection>scm:git:git@github.com:totyumengr/minicubes.git</developerConnection>
-		<tag>HEAD</tag>
-	</scm> -->
-
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -46,11 +39,6 @@
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
 		</dependency>
-<!-- 		<dependency> -->
-<!-- 			<groupId>com.foundationdb</groupId> -->
-<!-- 			<artifactId>fdb-sql-parser</artifactId> -->
-<!-- 			<version>1.3.0</version> -->
-<!-- 		</dependency> -->
 		<dependency>
 			<groupId>org.roaringbitmap</groupId>
 			<artifactId>RoaringBitmap</artifactId>
@@ -58,7 +46,7 @@
 		</dependency>
 	</dependencies>
 
-	<!-- Package as an executable jar -->
+	<!-- Package -->
 	<build>
 		<plugins>
 			<plugin>
@@ -82,19 +70,6 @@
 						<id>attach-sources</id>
 						<goals>
 							<goal>jar-no-fork</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-
-			<plugin>
-				<artifactId>maven-jar-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>test-jar</id>
-						<phase>package</phase>
-						<goals>
-							<goal>test-jar</goal>
 						</goals>
 					</execution>
 				</executions>
