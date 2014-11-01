@@ -4,7 +4,7 @@
 
 	<groupId>com.github.totyumengr</groupId>
 	<artifactId>minicubes-core</artifactId>
-	<version>0.2-SNAPSHOT</version>
+	<version>0.2.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<name>minicubes-core</name>
@@ -74,6 +74,14 @@
 					</execution>
 				</executions>
 			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<configuration>
+					<skip>true</skip>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 
@@ -83,5 +91,4 @@
 			<url>http://repo.spring.io/ext-release-local</url>
 		</repository>
 	</repositories>
-
 </project>
