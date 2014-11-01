@@ -73,9 +73,14 @@ public interface Aggregations {
     Map<Integer, RoaringBitmap> distinct(String distinctName, boolean isDim, String groupByDimName, Map<String, List<Integer>> filterDims);
     
     /** 
-     * distinct-count calculation, depends {@link #distinct(String, String, Map)} operation.
+     * distinct-count calculation, depends {@link #distinct(String, boolean, String, Map)} operation.
+     * @param distinctName same to distinct
+     * @param isDim same to distinct
+     * @param groupByDimName same to distinct
+     * @param filterDims same to distinct
+     * @return result of distinct-count operation 
      * 
-     * @see com.github.totyumengr.minicubes.core.Aggregations#distinct(java.lang.String, java.lang.String, java.util.Map)
+     * @see com.github.totyumengr.minicubes.core.Aggregations#distinct(String, boolean, String, Map)
      */
     Map<Integer, Integer> discnt(String distinctName, boolean isDim,
             String groupByDimName, Map<String, List<Integer>> filterDims);
