@@ -50,16 +50,15 @@ MiniCubes设计上追求极致简单，代码量只有2k行左右，未来也会
 *可以修改src/main/resources/application.properties来改变配置。也可以使用Spring Boot提供的配置外部化能力*
 
 ## 模块列表如下：
-* minicubes-core：提供基础的数据容器和聚合计算API。
-* minicubes-cluster：提供分布式聚合计算能力。
-
-## minicubes-core：
+#### minicubes-core：
 本模块提供内存型Cube的操作接口，设计目标就是：高性能
 * 使用Java8 Stream来提高聚集方法性能，使用parallel模式。
 * 使用[Bitmap Index](https://github.com/lemire/RoaringBitmap "compressed bitset")来增强部分聚集方法性能。
 * 使用[DoubleDouble](http://tsusiatsoftware.net/dd/main.html "DoubleDouble")替换Java.math.BigDecimal来降低内存占用。
 
-## minicubes-cluster：
+**注意这里有个坑：new DoubleDouble("1926")的结果是0.1926，需要改为new DoubleDouble("1926.00000000")**
+
+#### minicubes-cluster：
 本模块提供分布式计算能力，设计目标就是：高可用
 * 使用[MySQL Streaming](http://dev.mysql.com/doc/connector-j/en/connector-j-reference-implementation-notes.html "MySQL Streaming")来适应大结果集的加载。
 * 使用[Hazelcast](https://github.com/hazelcast/hazelcast "Hazelcast")提供集群管理和分布式ExecutorService。

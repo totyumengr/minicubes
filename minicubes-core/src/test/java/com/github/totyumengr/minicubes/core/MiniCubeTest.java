@@ -20,6 +20,7 @@ import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -38,6 +39,7 @@ import org.springframework.util.StopWatch;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.totyumengr.minicubes.core.FactTable.FactTableBuilder;
+import com.github.totyumengr.minicubes.core.FactTable.FactTableBuilderUserDefineDimProvider;
 
 /**
  * @author mengran
@@ -50,12 +52,46 @@ public class MiniCubeTest {
     
     private static MiniCube miniCube;
     
+    public static class UserDefineDimProvider implements FactTableBuilderUserDefineDimProvider {
+
+        @Override
+        public int getOrder() {
+            return Integer.MAX_VALUE;
+        }
+
+        @Override
+        public LinkedHashMap<String, String> getUserDefineDimConfig() {
+            
+            LinkedHashMap<String, String> map = new LinkedHashMap<String, String>(2);
+            map.put("shw_segment", "function shw_segment() {"
+                    + " var i_shw = new Number(shw);"
+                    + " if (i_shw === null) {return 0;}"
+                    + " else if (i_shw < 1000) { return 1;}"
+                    + " else if (i_shw >= 1000 && i_shw < 10000) { return 2;}"
+                    + " else if (i_shw >= 10000 && i_shw < 100000) { return 3;}"
+                    + " else if (i_shw >= 100000 && i_shw < 1000000) { return 4;}"
+                    + " else if (i_shw >= 1000000) {return 5;}"
+                    + "}");
+            map.put("cash_or_not", "function cash_or_not() {"
+                    + " var i_cash = new Number(cash);"
+                    + " if (i_cash === null || i_cash <= 0) { return 0;}"
+                    + " if (i_cash > 0) { return 1;}"
+                    + "}");
+            return map;
+        }
+        
+    }
+    
     @BeforeClass
     public static void prepare() throws Throwable {
         
+        Assert.assertTrue(new DoubleDouble(1926).doubleValue() == 1926.0);
+        Assert.assertTrue(new DoubleDouble("1926").doubleValue() == 0.1926);
+        Assert.assertTrue(new DoubleDouble("1926.000").doubleValue() == 1926.0);
+        
         String dataFile = System.getProperty("dataFile", "data_fc_bd_qs_day_detail_20140606.data");
         
-        FactTableBuilder builder = new FactTableBuilder().build("MiniCubeTest", 4)
+        FactTableBuilder builder = new FactTableBuilder().build("MiniCubeTest")
             .addDimColumns(Arrays.asList(new String[] {"the_date", "tradeId", "productLineId", "postId"}))
             .addIndColumns(Arrays.asList(new String[] {"csm", "cash", "click", "shw"}));
         
@@ -75,12 +111,24 @@ public class MiniCubeTest {
                 Integer.valueOf(split[0]), Integer.valueOf(split[1]), Integer.valueOf(split[2]), Integer.valueOf(split[3])}));
             builder.addIndDatas(index, Arrays.asList(new DoubleDouble[] {
                 new DoubleDouble(split[4]), new DoubleDouble(split[5]), 
-                    new DoubleDouble(split[6]), new DoubleDouble(split[7])}));
+                    new DoubleDouble(split[6] + ".00000000"), new DoubleDouble(split[7] + ".00000000")}));
         }
         reader.close();
         LOGGER.info("prepare - end: {}, {}ms", System.currentTimeMillis(), System.currentTimeMillis() - startTime);
         
         miniCube = new MiniCube(builder.done());
+    }
+    
+    @Test
+    public void test_0_1_UserDefineDims_shw_segment() throws Throwable {
+        
+        Map<String, List<Integer>> filter = new HashMap<String, List<Integer>>(1);
+        filter.put("shw_segment", Arrays.asList(new Integer[] {0, 1, 2, 3}));
+        miniCube.setParallelMode(true);
+        for (int i = 0; i < 5; i++) {
+            Assert.assertEquals("3336028826.00000000", miniCube.sum("shw", filter).toString());
+            Thread.sleep(1000L);
+        }
     }
     
     @Test
@@ -253,7 +301,7 @@ public class MiniCubeTest {
     @Test
     public void test_6_1_merge() {
         
-        FactTableBuilder builder = new FactTableBuilder().build("MiniCubeTest-merge", 4)
+        FactTableBuilder builder = new FactTableBuilder().build("MiniCubeTest-merge")
                 .addDimColumns(Arrays.asList(new String[] {"the_date", "tradeId", "productLineId", "postId"}))
                 .addIndColumns(Arrays.asList(new String[] {"csm", "cash", "click", "shw"}));
         

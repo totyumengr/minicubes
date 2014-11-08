@@ -16,20 +16,31 @@
 package com.github.totyumengr.minicubes.core;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
+
+import javax.script.Invocable;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
 
 import md.math.DoubleDouble;
 
 import org.roaringbitmap.RoaringBitmap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.Ordered;
 import org.springframework.util.Assert;
 
 /**
@@ -62,14 +73,13 @@ public class FactTable {
     static class Meta {
         
         String name;
-        private List<String> columnNames = new ArrayList<>();
-        private Map<String, Integer> columnNameIndexMap = new HashMap<String, Integer>();
-        private int indStartIndex = -1;
+        private LinkedHashMap<String, Integer> indColumnNames = new LinkedHashMap<String, Integer>();
+        private LinkedHashMap<String, Integer> dimColumnNames = new LinkedHashMap<String, Integer>();
 
         @Override
         public String toString() {
-            return "Meta [name=" + name + ", columnNames=" + columnNames
-                    + ", indStartIndex=" + indStartIndex + "]";
+            return "Meta [name=" + name + ", indicator columnNames=" + indColumnNames
+                    + ", dimension columnNames=" + dimColumnNames;
         }
     }
     
@@ -100,7 +110,7 @@ public class FactTable {
         public DoubleDouble getInd(String indName) {
             
             int index = FactTable.this.getIndIndex(indName);
-            return indOfFact[index - meta.indStartIndex];
+            return indOfFact[index];
         }
         
         public int getDim(String dimName) {
@@ -116,15 +126,28 @@ public class FactTable {
         
     }
     
-    private FactTable(String name, int indStartIndex) {
+    private FactTable(String name) {
         // Internal
         Meta meta = new Meta();
         meta.name = name;
-        meta.indStartIndex = indStartIndex;
         Assert.hasText(name, "Fact-table name can not empty.");
         
         this.meta = meta;
         this.records = new HashMap<Integer, FactTable.Record>(0);;
+    }
+    
+    /**
+     * Issue-8 implementation.
+     * @author mengran
+     *
+     */
+    public static interface FactTableBuilderUserDefineDimProvider extends Ordered {
+        
+        /**
+         * 
+         * @return column and expr configuration for user define dimensions. MUST NOT NULL.
+         */
+        LinkedHashMap<String, String> getUserDefineDimConfig();
     }
     
     /**
@@ -137,7 +160,48 @@ public class FactTable {
     public static class FactTableBuilder {
         private static final ThreadLocal<FactTable> IN_BUILDING = new ThreadLocal<FactTable>();
         
-        public FactTableBuilder build(String name, int indStartIndex) {
+        private static List<FactTableBuilderUserDefineDimProvider> providers = new ArrayList<FactTableBuilderUserDefineDimProvider>();
+        private static ScriptEngine scriptEngine;
+        
+        static {
+            ServiceLoader<FactTableBuilderUserDefineDimProvider> serviceLoader = ServiceLoader.load(FactTableBuilderUserDefineDimProvider.class);
+            for (Iterator<FactTableBuilderUserDefineDimProvider> it = serviceLoader.iterator();it.hasNext();) {
+                providers.add(it.next());
+            }
+            Collections.sort(providers, new Comparator<FactTableBuilderUserDefineDimProvider>() {
+                
+                @Override
+                public int compare(FactTableBuilderUserDefineDimProvider o1,
+                        FactTableBuilderUserDefineDimProvider o2) {
+                    return o1.getOrder() - o2.getOrder();
+                }
+            });
+            LOGGER.info("Retrieve user define dimension providers {}", providers);
+            
+            scriptEngine = new ScriptEngineManager().getEngineByName("nashorn");
+            
+            for (FactTableBuilderUserDefineDimProvider p : providers) {
+                for(Entry<String, String> e : p.getUserDefineDimConfig().entrySet()) {
+                    try {
+                        scriptEngine.eval(e.getValue());
+                        LOGGER.info("regist user-define column {} expr {}", e.getKey(), e.getValue());
+                    } catch (Exception e1) {
+                        LOGGER.error("Error occurred when try to process user-define column {} expr {}", e.getKey(), e.getValue());
+                        throw new RuntimeException(e1);
+                    }
+                }
+            }
+        }
+        
+        /**
+         * Constructor
+         */
+        public FactTableBuilder() {
+            super();
+            // FIXME: Need specify strict build method call-flow
+        }
+
+        public FactTableBuilder build(String name) {
             
             if (IN_BUILDING.get() != null) {
                 throw new IllegalStateException("Previous building " + IN_BUILDING.get()
@@ -145,7 +209,7 @@ public class FactTable {
             }
             // FIXME: Check name?
             
-            IN_BUILDING.set(new FactTable(name, indStartIndex));
+            IN_BUILDING.set(new FactTable(name));
             return this;
         }
         
@@ -156,22 +220,20 @@ public class FactTable {
                 throw new IllegalStateException("Current building is not started, call #build first.");
             }
             
-            if (current.meta.columnNames.size() > current.meta.indStartIndex && current.meta.indStartIndex > 0) {
-                throw new IllegalStateException("Have filled " + current.meta.indStartIndex + 
-                        " dimensions yet.");
-            }
-            
             for (int i = 0; i < dimColumnNames.size(); i++) {
-                if (current.meta.columnNames.contains(dimColumnNames.get(i))) {
+                if (current.meta.dimColumnNames.keySet().contains(dimColumnNames.get(i))) {
                     throw new IllegalStateException("Dimension " + dimColumnNames.get(i) + " has exists.");
                 }
-                current.meta.columnNames.add(dimColumnNames.get(i));
+                current.meta.dimColumnNames.put(dimColumnNames.get(i), current.meta.dimColumnNames.size());
             }
             
-            // Because Integer.MAX_VALUE is 2147483647
-            if (current.meta.columnNames.size() > 21) {
-                throw new IllegalStateException("Current version only support 20 dimensions max.");
+            // Add user-define dimension process
+            for (FactTableBuilderUserDefineDimProvider p : providers) {
+                for (String key : p.getUserDefineDimConfig().keySet()) {
+                    current.meta.dimColumnNames.put(key, current.meta.dimColumnNames.size());
+                }
             }
+            LOGGER.info("Complete filling user-define dimension and now dimension columns is {}", current.meta.dimColumnNames);
             
             return this;
         }
@@ -183,21 +245,11 @@ public class FactTable {
                 throw new IllegalStateException("Current building is not started, call #build first.");
             }
             
-            if (current.meta.indStartIndex < 0) {
-                // Set flag for specify indication 
-                current.meta.indStartIndex = current.meta.columnNames.size();
-            }
-            
-            if (current.meta.columnNames.size() < current.meta.indStartIndex && current.meta.indStartIndex > 0) {
-                throw new IllegalStateException("Please fill " + current.meta.indStartIndex + 
-                        " dimensions first, current dimension size is " + current.meta.columnNames.size());
-            }
-            
             for (int i = 0; i < indColumnNames.size(); i++) {
-                if (current.meta.columnNames.contains(indColumnNames.get(i))) {
+                if (current.meta.indColumnNames.keySet().contains(indColumnNames.get(i))) {
                     throw new IllegalStateException("Indication " + indColumnNames.get(i) + " has exists.");
                 }
-                current.meta.columnNames.add(indColumnNames.get(i));
+                current.meta.indColumnNames.put(indColumnNames.get(i), current.meta.indColumnNames.size());
             }
             return this;
         }
@@ -208,10 +260,7 @@ public class FactTable {
             if (current == null) {
                 throw new IllegalStateException("Current building is not started, call #build first.");
             }
-            if (dimDatas.size() < current.meta.indStartIndex) {
-                throw new IllegalStateException("Current version only support one-time dimension data setting.");
-            }
-            Assert.isTrue(current.meta.indStartIndex > 0, "Fact-table must have a dimension column at least.");
+            Assert.isTrue(current.meta.dimColumnNames.size() > 0, "Fact-table must have a dimension column at least.");
             
             Record record = current.records.get(primaryKey);
             if (record == null) {
@@ -219,25 +268,40 @@ public class FactTable {
                 current.records.put(primaryKey, record);
             }
             
+            // Fill dimension data
+            fillDimDatas(current, record, dimDatas);
+            
+            return this;
+        }
+        
+        private void fillDimDatas(FactTable current, Record record, List<Integer> dimDatas) {
             // Build bitmap index
+            int baseIndex = record.dimOfFact == null ? 0 : record.dimOfFact.length - dimDatas.size();
             for (int i = 0; i < dimDatas.size(); i++) {
                 Integer dimValue = dimDatas.get(i);
-                String bitMapkey = current.meta.columnNames.get(i) + ":" + dimValue;
+                int fi = baseIndex + i;
+                // Fill dimension value
+                if (record.dimOfFact == null) {
+                    record.dimOfFact = new int[current.meta.dimColumnNames.size()];
+                }
+//                if (record.dimOfFact.length < fi) {
+//                    // Expand dimension array
+//                    int[] array = new int[record.dimOfFact.length + dimDatas.size()];
+//                    System.arraycopy(record.dimOfFact, 0, array, 0, record.dimOfFact.length);
+//                    record.dimOfFact = array;
+//                }
+                record.dimOfFact[fi] = dimValue;
+                
+                // Index dimension value
+                String column = current.meta.dimColumnNames.entrySet().stream().filter(v -> v.getValue() == fi).findFirst().get().getKey();
+                String bitMapkey = column + ":" + dimValue;
                 RoaringBitmap bitmap = current.bitmapIndex.get(bitMapkey);
                 if (bitmap == null) {
                     bitmap = new RoaringBitmap();
                     current.bitmapIndex.put(bitMapkey, bitmap);
                 }
                 bitmap.add(record.getId());
-                
-                // Index dimension value
-                if (record.dimOfFact == null) {
-                    record.dimOfFact = new int[current.meta.indStartIndex];
-                }
-                record.dimOfFact[i] = dimValue;
             }
-            
-            return this;
         }
         
         public FactTableBuilder addIndDatas(Integer primaryKey, List<DoubleDouble> indDatas) {
@@ -252,6 +316,32 @@ public class FactTable {
                 current.records.put(primaryKey, record);
             }
             record.indOfFact = indDatas.toArray(new DoubleDouble[0]);
+            if (record.indOfFact.length != current.meta.indColumnNames.size()) {
+                throw new IllegalStateException("Current version only support one-time indicator data filling.");
+            }
+            
+            // Add user-define dimension process
+            int i = -1;
+            for (String indColumn : current.meta.indColumnNames.keySet()) {
+                i++;
+                scriptEngine.put(indColumn, indDatas.get(i).doubleValue());
+            }
+            
+            List<Integer> userDefineDimensions = new ArrayList<Integer>();
+            for (FactTableBuilderUserDefineDimProvider p : providers) {
+                for(Entry<String, String> e : p.getUserDefineDimConfig().entrySet()) {
+                    try {
+                        Invocable inv = (Invocable) scriptEngine;
+                        Object o = inv.invokeFunction(e.getKey(), new Object[0]);
+                        userDefineDimensions.add(Integer.valueOf(o.toString()));
+                        LOGGER.debug("process user-define column {} expr {} value {}", e.getKey(), e.getValue(), o);
+                    } catch (Exception e1) {
+                        LOGGER.error("Error occurred when try to process user-define column {} expr {}", e.getKey(), e.getValue());
+                        throw new RuntimeException(e1);
+                    }
+                }
+            }
+            fillDimDatas(current, record, userDefineDimensions);
             
             return this;
         }
@@ -262,19 +352,13 @@ public class FactTable {
             if (current == null) {
                 throw new IllegalStateException("Current building is not started, call #build first.");
             }
-
             IN_BUILDING.set(null);
-//            current.recordList = Collections.unmodifiableCollection(current.records.values());
-//            current.records = new HashMap<Integer, Record>(0);
             
-            // FIXME: Check valid or not
-            current.meta.columnNames.stream().forEach(new Consumer<String>() {
-                @Override
-                public void accept(String t) {
-                    Integer index = current.meta.columnNameIndexMap.put(t, current.meta.columnNameIndexMap.size());
-                    Assert.isTrue(index == null, "Found the same column name " + t);
-                }
-            });
+            Set<String> allNames = new HashSet<String>();
+            allNames.addAll(current.meta.dimColumnNames.keySet());
+            allNames.addAll(current.meta.indColumnNames.keySet());
+            Assert.isTrue(allNames.size() == current.meta.dimColumnNames.size() + current.meta.indColumnNames.size(), 
+                    "Contains same name between dimentions and indicators.");
             
             int usedKb = 0;
             int usedBytes = 0;
@@ -289,7 +373,7 @@ public class FactTable {
             }
             usedKb = usedKb + (usedBytes / 1024);
             LOGGER.info("Build completed: name {} with {} dimension columns, {} measure columns and {} records, {} indexes used {} kb.", 
-                    current.meta.name, current.meta.indStartIndex, current.meta.columnNames.size() - current.meta.indStartIndex, 
+                    current.meta.name, current.meta.dimColumnNames.size(), current.meta.indColumnNames.size(), 
                     current.records.size(), current.bitmapIndex.size(), usedKb);
             
             return current;
@@ -355,7 +439,7 @@ public class FactTable {
     public int getIndIndex(String indName) throws IllegalArgumentException {
         
         int index = -1;
-        if (indName == null || "".equals(indName) || (index = meta.columnNameIndexMap.get(indName)) < 0) {
+        if (indName == null || "".equals(indName) || (index = meta.indColumnNames.get(indName)) < 0) {
             throw new IllegalArgumentException();
         }
         
@@ -371,7 +455,7 @@ public class FactTable {
     public int getDimIndex(String dimName) throws IllegalArgumentException {
         
         int index = -1;
-        if (dimName == null || "".equals(dimName) || (index = meta.columnNameIndexMap.get(dimName)) < 0) {
+        if (dimName == null || "".equals(dimName) || (index = meta.dimColumnNames.get(dimName)) < 0) {
             throw new IllegalArgumentException();
         }
         return index;

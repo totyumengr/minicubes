@@ -370,7 +370,7 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
             boolean builded = false;
             AtomicInteger rowCount = new AtomicInteger();
             try {
-                builder.build(timeSeries, impl.splitIndex - 1);
+                builder.build(timeSeries);
                 AtomicBoolean processMeta = new AtomicBoolean(true);
                 AtomicInteger actualSplitIndex = new AtomicInteger();
                 
