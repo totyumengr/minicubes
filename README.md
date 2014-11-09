@@ -56,7 +56,7 @@ MiniCubes设计上追求极致简单，代码量只有2k行左右，未来也会
 * 使用[Bitmap Index](https://github.com/lemire/RoaringBitmap "compressed bitset")来增强部分聚集方法性能。
 * 使用[DoubleDouble](http://tsusiatsoftware.net/dd/main.html "DoubleDouble")替换Java.math.BigDecimal来降低内存占用。
 
-**注意这里有个坑：new DoubleDouble("1926")的结果是0.1926，需要改为new DoubleDouble("1926.00000000")**
+*注意这里有个坑：new DoubleDouble("1926")的结果是0.1926，需要改为new DoubleDouble("1926.00000000")*
 
 #### minicubes-cluster：
 本模块提供分布式计算能力，设计目标就是：高可用
