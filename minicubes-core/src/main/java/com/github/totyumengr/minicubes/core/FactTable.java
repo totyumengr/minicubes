@@ -151,7 +151,7 @@ public class FactTable {
     }
     
     /**
-     * Builder pattern class for {@link FactTable}, chain model begin with {@link #build(String, int)} 
+     * Builder pattern class for {@link FactTable}, chain model begin with {@link #build(String)} 
      * and end with {{@link #done()}.
      * 
      * @author mengran
