@@ -1,14 +1,43 @@
 MiniCubes
 =========
 
-MiniCubes是一个轻量级、高性能、分布式、内存型OLAP计算引擎（利用Java8 Stream的高性能计算特性来支撑单JVM节点上的聚集计算），提供聚合函数有：
+MiniCubes是一个轻量级、高性能、分布式、内存型OLAP计算引擎，提供**分布式计算函数**有：
 * sum：指定指标的SUM聚集计算。
 * groupby-sum；指定指标在某一维度上的GROUPBY聚合计算。
-* groupby-distinct[-count]：指定指标/维度在某一维度上的DISTINCT和DISTINCT-COUNT计算。
+* groupby-distinct：指定指标/维度在某一维度上的DISTINCT计算。
+* groupby-distinct-count：指定指标/维度在某一维度上的DISTINCT-COUNT计算。
 
-**上述函数均支持分布式计算特性**
+## 设计原则：
+* MiniCubes追求极致的fat-table设计，支持在数据导入阶段增加自定义维度索引列。
+* MiniCubes设计上追求极致简单，代码量只有2k行左右，未来也会尽力保持她小而美。
 
-MiniCubes设计上追求极致简单，代码量只有2k行左右，未来也会尽力保持她小而美。
+## 使用&依赖：
+* Maven依赖库：
+```
+<dependency>
+    <groupId>com.github.totyumengr</groupId>
+    <artifactId>minicubes-core</artifactId>
+    <version>${minicubes.version}</version>
+</dependency>
+<dependency>
+    <groupId>com.github.totyumengr</groupId>
+    <artifactId>minicubes-cluster</artifactId>
+    <version>${minicubes.version}</version>
+</dependency>
+```
+* 可执行Fat Jar：
+```
+cd <dir of minicubes>
+mvn -Pfat clean install -DskipTests=true
+java -server -jar minicubes-cluster-VERSIONS.jar
+http://localhost:PORT/status
+```
+
+* 多次运行，可在单机上构建JVM集群：
+```
+java -server -jar minicubes-cluster-VERSIONS.jar
+```
+*使用Spring Boot提供的配置外部化能力，来构建企业级集群*
 
 ## 数据：
 * Java8 Stream parallel平均会快于sequential，但parallel模式稳定度不如sequential。
@@ -39,20 +68,10 @@ MiniCubes设计上追求极致简单，代码量只有2k行左右，未来也会
 
 **以上基于CPU12核/内存128G的物理机和CPU8核/16G内存的虚拟机搭建集群测试得出**
 
-## 本地开发：
-我们采用Spring Boot来构建“自包含”的应用，JDK1.8，Maven3：
-* minicubes-core目录下执行：mvn clean install -DskipTests=true
-* minicubes-cluster目录下执行：mvn clean install -DskipTests=true
-* Maven仓库目录下：com/github/totyumengr/minicubes-cluster/目录下，找到jar包
-* 直接执行：java -server -jar minicubes-cluster-VERSIONS.jar
-* 访问：http://localhost:PORT/[status,reassign,sum]
-
-*可以修改src/main/resources/application.properties来改变配置。也可以使用Spring Boot提供的配置外部化能力*
-
 ## 模块列表如下：
 #### minicubes-core：
 本模块提供内存型Cube的操作接口，设计目标就是：高性能
-* 使用Java8 Stream来提高聚集方法性能，使用parallel模式。
+* 使用[Java8 Stream](https://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html "Java8 Stream")来提高聚集方法性能，使用parallel模式。
 * 使用[Bitmap Index](https://github.com/lemire/RoaringBitmap "compressed bitset")来增强部分聚集方法性能。
 * 使用[DoubleDouble](http://tsusiatsoftware.net/dd/main.html "DoubleDouble")替换Java.math.BigDecimal来降低内存占用。
 

@@ -37,8 +37,8 @@
 	</scm>
 
 	<modules>
-		<!-- <module>minicubes-cluster</module> -->
 		<module>minicubes-core</module>
+		<module>minicubes-cluster</module>
 	</modules>
 
 	<profiles>

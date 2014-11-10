@@ -32,7 +32,7 @@ import com.github.totyumengr.minicubes.core.MiniCube;
  *   <li>cube date: time dimension member name, for example 20140201, 201402, 2014Q1, 2014H1, 2014. <code>?</code> if not be assigned yet.
  *   <li>cube name: In general it's contains dimension name and indicator name. <code>cluster name </code> if not assign.
  *   <li>node name: JVM name, {@link com.hazelcast.core.Member Hazelcast member} in our default implementation
- * 
+ * </ul>
  * <p>Unified dimension is important in analysis scene, so one cube cluster has <b>only one</b> dimension group.
  * 
  * <p>What means time-series cube? Shard by date time.
@@ -43,14 +43,14 @@ public interface TimeSeriesMiniCubeManager extends Aggregations {
     
     /**
      * @return All of (assigned) cube names in cluster.
-     * @See {@link #reassignRole(String, String)}
+     * {@link #reassignRole(String, String)}
      */
     Collection<String> allCubeIds();
     
     /**
      * @param cubeDate time-series field for locate cubes.
      * @return (assigned) cube IDs in cluster.
-     * @see {@link #reassignRole(String, String)}
+     * {@link #reassignRole(String, String)}
      */
     Collection<String> cubeIds(String cubeDate);
     
@@ -67,7 +67,7 @@ public interface TimeSeriesMiniCubeManager extends Aggregations {
      * @param task execute target
      * @param <T> result type
      * @param cubeIds execution on. Empty means <b>all members</b>
-     * @param timeoutSeconds timeout seconds. <=0 will be reuse {@link Integer#MAX_VALUE}
+     * @param timeoutSeconds timeout seconds. &lt;=0 will be reuse {@link Integer#MAX_VALUE}
      * @return result list of every cube
      */
     <T> List<T> execute(Callable<T> task, Collection<String> cubeIds, int timeoutSeconds);
