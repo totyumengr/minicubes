@@ -3,7 +3,7 @@
 
 	<groupId>com.github.totyumengr</groupId>
 	<artifactId>minicubes-core</artifactId>
-	<version>0.2-SNAPSHOT</version>
+	<version>0.2</version>
 	<packaging>jar</packaging>
 
 	<name>minicubes-core</name>
