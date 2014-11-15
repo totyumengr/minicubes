@@ -9,7 +9,8 @@ MiniCubes是一个轻量级、高性能、分布式、内存型OLAP计算引擎�
 
 ## 设计原则：
 * MiniCubes追求极致的fat-table设计，支持在数据导入阶段增加自定义维度索引列。
-* MiniCubes设计上追求极致简单，代码量只有2k行左右，未来也会尽力保持她小而美。
+* MiniCubes倾向于构建“自包含”的微服务，**只依赖JVM**即可运行，简单极致的集群化部署流程。
+* MiniCubes设计上追求极致简单，代码量只有**2k**行左右，未来也会尽力保持她小而美。
 
 ## 使用&依赖：
 * Maven依赖库：
@@ -81,3 +82,4 @@ java -server -jar minicubes-cluster-VERSIONS.jar
 本模块提供分布式计算能力，设计目标就是：高可用
 * 使用[MySQL Streaming](http://dev.mysql.com/doc/connector-j/en/connector-j-reference-implementation-notes.html "MySQL Streaming")来适应大结果集的加载。
 * 使用[Hazelcast](https://github.com/hazelcast/hazelcast "Hazelcast")提供集群管理和分布式ExecutorService。
+* 使用maven-surefire插件的[Fork Mode](http://maven.apache.org/surefire/maven-surefire-plugin/examples/fork-options-and-parallel-execution.html "Fork Mode")，来做集群部署集成测试，保证代码质量。
