@@ -15,6 +15,7 @@
 		<java.version>1.8</java.version>
 		<minicubes.core.version>${project.version}</minicubes.core.version>
 		<hazelcast.version>3.2.3</hazelcast.version>
+		<mysql.version>5.1.34</mysql.version>
 	</properties>
 
 	<!-- Inherit defaults from Spring Boot -->
@@ -31,6 +32,7 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
+					<forkCount>3</forkCount>
 					<argLine>-Xmx1024m</argLine>
 				</configuration>
 			</plugin>
@@ -87,6 +89,13 @@
 		<dependency>
 			<groupId>org.jolokia</groupId>
 			<artifactId>jolokia-core</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>com.mashape.unirest</groupId>
+			<artifactId>unirest-java</artifactId>
+			<version>1.3.20</version>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 

@@ -64,6 +64,14 @@ public interface TimeSeriesMiniCubeManager extends Aggregations {
     String reassignRole(String cubeId, String timeSeries);
     
     /**
+     * Incremental updates cube data of given time-series.
+     * @param timeSeries role
+     * @param version merge data range column value
+     * @return effect records count. Implementation can <b>don't</b> return actual value.
+     */
+    int merge(String timeSeries, int version);
+    
+    /**
      * @param task execute target
      * @param <T> result type
      * @param cubeIds execution on. Empty means <b>all members</b>

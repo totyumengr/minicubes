@@ -122,6 +122,8 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
     
     @Autowired
     private DataSource dataSource;
+    @Value("${minicube.builder.mergeFlagColumn}")
+    private String mergeFlagColumn;
     @Value("${minicube.builder.sourceSql}")
     private String factSourceSql;
     @Value("${minicube.measure.fromIndex}")
@@ -131,6 +133,7 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
      * Manage target object.
      */
     private transient MiniCube miniCube;
+    private static final AtomicInteger MINICUBE_PK = new AtomicInteger(0);
     
     private ScheduledExecutorService handleNewMember = Executors.newSingleThreadScheduledExecutor();
     
@@ -319,20 +322,20 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
         return result;
     }
     
-    private static class Assign implements Callable<String>, HazelcastInstanceAware, Serializable {
+    private static abstract class CubeBuilder implements Callable<String>, HazelcastInstanceAware, Serializable {
 
         /**
          * 
          */
         private static final long serialVersionUID = 1L;
         
-        private transient HazelcastInstance instance;
-        private transient TimeSeriesMiniCubeManagerHzImpl impl;
+        protected transient HazelcastInstance instance;
+        protected transient TimeSeriesMiniCubeManagerHzImpl impl;
         
-        private String cubeId;
-        private String timeSeries;
+        protected String cubeId;
+        protected String timeSeries;
         
-        public Assign(String cubeId, String timeSeries) {
+        public CubeBuilder(String cubeId, String timeSeries) {
             super();
             this.cubeId = cubeId;
             this.timeSeries = timeSeries;
@@ -342,6 +345,18 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
         public void setHazelcastInstance(HazelcastInstance hazelcastInstance) {
             instance = hazelcastInstance;
             impl = (TimeSeriesMiniCubeManagerHzImpl) instance.getUserContext().get("this");
+        }
+        
+        protected String pre() {
+            return null;
+        }
+        
+        protected String post(MiniCube newMiniCube) {
+            return null;
+        }
+        
+        protected String sql() {
+            return impl.factSourceSql;
         }
 
         @Override
@@ -353,14 +368,10 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
                         + "only permitted to run in local member.");
             }
             
-            // Check load-pending status
-            boolean loadPending = localMember.getBooleanAttribute("load-pending");
-            if (loadPending) {
-                String newCubeId = timeSeries + "::" + impl.hzGroupName + "@" + member;
-                IMap<String, String> miniCubeManager = instance.getMap(MINICUBE_MANAGER);
-                miniCubeManager.put(member, newCubeId);
-                LOGGER.warn("Only change relationship {} {} when load-pending status.", member, newCubeId);
-                return newCubeId;
+            String forReturn = pre();
+            if (StringUtils.hasLength(forReturn)) {
+                LOGGER.info("Don't fetch data and directly return {} {}.", cubeId, timeSeries);
+                return forReturn;
             }
             
             LOGGER.info("Start fetching data and building cube {}, {}", cubeId, timeSeries);
@@ -437,7 +448,7 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
                         public PreparedStatement createPreparedStatement(Connection con)
                                 throws SQLException {
                             
-                            PreparedStatement stmt = con.prepareStatement(impl.factSourceSql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+                            PreparedStatement stmt = con.prepareStatement(sql(), ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
                             // MySQL steaming result-set http://dev.mysql.com/doc/connector-j/en/connector-j-reference-implementation-notes.html
                             // http://stackoverflow.com/questions/2095490/how-to-manage-a-large-dataset-using-spring-mysql-and-rowcallbackhandler
                             try {
@@ -499,8 +510,9 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
                                 }
                             }
                             rowCount.incrementAndGet();
-                            builder.addDimDatas(rowCount.get(), dimDatas);
-                            builder.addIndDatas(rowCount.get(), indDatas);
+                            int pk = MINICUBE_PK.incrementAndGet();
+                            builder.addDimDatas(pk, dimDatas);
+                            builder.addIndDatas(pk, indDatas);
                             
                             if (rowCount.get() % 1000000 == 0) {
                                 LOGGER.info("Loaded {} records into cube.", rowCount.get());
@@ -510,16 +522,10 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
                 );
                 
                 // Ending build operation
-                impl.miniCube = new MiniCube(builder.done());
+                MiniCube newMiniCube = new MiniCube(builder.done());
                 builded = true;
                 
-                String newCubeId = timeSeries + "::" + impl.hzGroupName + "@" + member;
-                LOGGER.info("Success to build cube {} from {} and {}", newCubeId, cubeId, timeSeries);
-                
-                // Put relationship into member
-                localMember.setStringAttribute("cubeId", newCubeId);
-                IMap<String, String> miniCubeManager = instance.getMap(MINICUBE_MANAGER);
-                miniCubeManager.put(member, newCubeId);
+                String newCubeId = post(newMiniCube);
                 
                 return newCubeId;
             } finally {
@@ -527,6 +533,56 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
                     builder.done();
                 }
             }
+        }
+        
+    }
+    
+    private static class Assign extends CubeBuilder implements Callable<String>, HazelcastInstanceAware, Serializable {
+
+        /**
+         * 
+         */
+        private static final long serialVersionUID = 1L;
+        
+        public Assign(String cubeId, String timeSeries) {
+            super(cubeId, timeSeries);
+        }
+        
+        @Override
+        protected String pre() {
+            Member localMember = instance.getCluster().getLocalMember();
+            String member = cubeId.split("@")[1];
+            // Check load-pending status
+            boolean loadPending = localMember.getBooleanAttribute("load-pending");
+            if (loadPending) {
+                String newCubeId = timeSeries + "::" + impl.hzGroupName + "@" + member;
+                IMap<String, String> miniCubeManager = instance.getMap(MINICUBE_MANAGER);
+                miniCubeManager.put(member, newCubeId);
+                LOGGER.warn("Only change relationship {} {} when load-pending status.", member, newCubeId);
+                return newCubeId;
+            }
+            
+            return null;
+        }
+
+        @Override
+        protected String post(MiniCube newMiniCube) {
+            
+            Member localMember = instance.getCluster().getLocalMember();
+            String member = cubeId.split("@")[1];
+            
+            // Ending build operation
+            impl.miniCube = newMiniCube;
+            
+            String newCubeId = timeSeries + "::" + impl.hzGroupName + "@" + member;
+            LOGGER.info("Success to build cube {} from {} and {}", newCubeId, cubeId, timeSeries);
+            
+            // Put relationship into member
+            localMember.setStringAttribute("cubeId", newCubeId);
+            IMap<String, String> miniCubeManager = instance.getMap(MINICUBE_MANAGER);
+            miniCubeManager.put(member, newCubeId);
+            
+            return newCubeId;
         }
         
     }
@@ -549,6 +605,68 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
         return result.get(0);
     }
     
+    private static class Merge extends CubeBuilder implements Callable<String>, HazelcastInstanceAware, Serializable {
+
+        /**
+         * 
+         */
+        private static final long serialVersionUID = 1L;
+        
+        private int version;
+        
+        public Merge(String cubeId, String timeSeries, int version) {
+            super(cubeId, timeSeries);
+            this.version = version;
+        }
+        
+        @Override
+        protected String pre() {
+            return null;
+        }
+
+        @Override
+        protected String post(MiniCube newMiniCube) {
+            
+            // Ending build operation
+            impl.miniCube.merge(newMiniCube);
+            
+            LOGGER.info("Success to merge cube {} into {} of ", newMiniCube, impl.miniCube, timeSeries);
+            return cubeId;
+        }
+        
+        @Override
+        protected String sql() {
+            
+            String originalSql = super.sql();
+            // FIXME: Weak logic of SQL
+            String sql = originalSql + " and " + impl.mergeFlagColumn + " = " + version;
+            LOGGER.info("Merge data range {} of {}.", sql, timeSeries);
+            return sql;
+        }
+        
+    }
+    
+    @Override
+    public int merge(String timeSeries, int version) {
+        
+        LOGGER.info("Starting to merge {}...", timeSeries);
+        try {
+            Collection<String> cubeIds = cubeIds(timeSeries);
+            
+            // FIXME: When support #3, this assert will be fail.
+            Assert.isTrue(cubeIds.size() == 1, "Current version have not support multiple cubes of one time-series.");
+            
+            // Do execute
+            List<String> results = execute(new Merge(cubeIds.iterator().next(), timeSeries, version), cubeIds, hzExecutorTimeout);
+            LOGGER.info("Merge {} of {} sucessfully, result is {}.", timeSeries, version, results);
+        } finally {
+            AGG_CONTEXT.remove();
+        }
+        
+        // FIXME: Current version we don't return this value.
+        return -1;
+    }
+
     @Override
     public Collection<String> allCubeIds() {
         

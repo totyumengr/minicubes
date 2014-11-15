@@ -53,6 +53,8 @@ public class BootTimeSeriesMiniCubeController {
     
     private ObjectMapper objectMapper = new ObjectMapper();
     
+    public static final String OK = "ok";
+    
     @Autowired
     private TimeSeriesMiniCubeManager manager;
     
@@ -89,6 +91,17 @@ public class BootTimeSeriesMiniCubeController {
         LOGGER.info("Sucess to assign cubeId{} to handle{} request.", newCubeId, timeSeries);
         
         return newCubeId;
+    }
+    
+    @RequestMapping(value="/merge", method={RequestMethod.POST, RequestMethod.GET})
+    public @ResponseBody String merge(@NotBlank @RequestParam int version, 
+            @NotBlank @RequestParam String timeSeries) {
+        
+        LOGGER.info("Try to merge data of {} to {}.", version, timeSeries);
+        int result = manager.merge(timeSeries, version);
+        LOGGER.info("Success for merge data of {} to {}, result is {}", version, timeSeries, result);
+        
+        return OK;
     }
     
     @RequestMapping(value="/sum", method={RequestMethod.POST, RequestMethod.GET})
