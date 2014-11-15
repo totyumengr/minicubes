@@ -33,7 +33,8 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
 					<forkCount>3</forkCount>
-					<argLine>-Xmx1024m</argLine>
+					<reuseForks>true</reuseForks>
+					<argLine>-Xmx512m</argLine>
 				</configuration>
 			</plugin>
 		</plugins>
