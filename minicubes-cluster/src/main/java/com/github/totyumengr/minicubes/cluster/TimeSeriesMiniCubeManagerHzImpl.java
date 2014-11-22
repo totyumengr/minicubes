@@ -884,6 +884,116 @@ public class TimeSeriesMiniCubeManagerHzImpl implements TimeSeriesMiniCubeManage
         }
     }
     
+    private static class Count extends Executee implements Callable<Long> {
+        
+        /**
+         * 
+         */
+        private static final long serialVersionUID = 1L;
+        private String indName;
+        private Map<String, List<Integer>> filterDims;
+        
+        public Count(String indName, Map<String, List<Integer>> filterDims) {
+            super();
+            this.indName = indName;
+            this.filterDims = filterDims;
+        }
+
+        @Override
+        public Long call() throws Exception {
+            
+            LOGGER.info("Count on {}", instance.getCluster().getLocalMember());
+            return impl.miniCube == null ? 0L : impl.miniCube.count(indName, filterDims);
+        }
+        
+    }
+
+    
+    @Override
+    public long count(String indName) {
+        
+        return count(indName, null);
+    }
+
+    @Override
+    public long count(String indName, Map<String, List<Integer>> filterDims) {
+        
+        try {
+            Set<String> cubeIds = cubeIds();
+            
+            // Do execute
+            List<Long> results = execute(new Count(indName, filterDims), cubeIds, hzExecutorTimeout);
+            LOGGER.debug("Count {} on {} results is {}", indName, cubeIds, results);
+            
+            Long result = results.stream().reduce(0L, (x, y) -> x + y);
+            LOGGER.info("Count {} on {} result is {}", indName, cubeIds, result);
+            
+            return result;
+        } finally {
+            AGG_CONTEXT.remove();
+        }
+    }
+    
+    /**
+     * FIXME: Need re-design
+     * @author mengran
+     *
+     */
+    private static class Count2 extends Executee implements Callable<Map<Integer, Long>> {
+
+        /**
+         * 
+         */
+        private static final long serialVersionUID = 1L;
+        
+        private String indName;
+        private Map<String, List<Integer>> filterDims;
+        private String groupDimName;
+        
+        public Count2(String indName, String groupDimName, Map<String, List<Integer>> filterDims) {
+            super();
+            this.indName = indName;
+            this.filterDims = filterDims;
+            this.groupDimName = groupDimName;
+        }
+
+        @Override
+        public Map<Integer, Long> call() throws Exception {
+            
+            LOGGER.info("Sum on {}", instance.getCluster().getLocalMember());
+            return impl.miniCube == null ? null : impl.miniCube.count(indName, groupDimName, filterDims);
+        }
+        
+    }
+
+    @Override
+    public Map<Integer, Long> count(String indName, String groupByDimName,
+            Map<String, List<Integer>> filterDims) {
+        
+        try {
+            Set<String> cubeIds = cubeIds();
+            
+            // Do execute
+            List<Map<Integer, Long>> results = execute(new Count2(indName, groupByDimName, filterDims), 
+                    cubeIds, hzExecutorTimeout);
+            LOGGER.debug("Group counting {} on {} with filter {} results is {}", indName, cubeIds, filterDims, results);
+            
+            Map<Integer, Long> result = new HashMap<Integer, Long>();
+            results.stream().forEach(new Consumer<Map<Integer, Long>>() {
+
+                @Override
+                public void accept(Map<Integer, Long> t) {
+                    t.forEach((k, v) -> result.merge(k, v, Long::sum));
+                }
+            });
+            LOGGER.debug("Count {} on {} with filter {} results is {}", indName, cubeIds, filterDims, result);
+            
+            return result;
+        } finally {
+            AGG_CONTEXT.remove();
+        }
+    }
+    
     /**
      * @author mengran
      *

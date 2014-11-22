@@ -118,6 +118,19 @@ public class TimeSeriesMiniCubeTest {
             Assert.fail();
         }
         
+        // Count
+        try {
+            String countResult = Unirest.post("http://localhost:" + port + "/count").header("accept", "application/json")
+                .field("timeSeries", timeSeriesString)
+                .field("indName", "CSM")
+                .asString().getBody();
+            Assert.assertEquals(actualTimeSeriesCount == 1 ? "9" : 
+                (actualTimeSeriesCount == 2 ? "19" : 
+                    (actualTimeSeriesCount == 3 ? "29" : "")), countResult);
+        } catch (Exception e) {
+            Assert.fail();
+        }
+        
         // Merge
         try {
             String dummyMerge = Unirest.post("http://localhost:" + port + "/dummyMerge").header("accept", "application/json")

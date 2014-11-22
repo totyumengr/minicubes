@@ -62,6 +62,36 @@ public interface Aggregations {
     Map<Integer, BigDecimal> sum(String indName, String groupByDimName, Map<String, List<Integer>> filterDims);
 
     /**
+     * Count calculation of given indicate with filter. It equal to "SELECT COUNT({indName}) FROM {fact table of cube}".
+     * @param indName indicate name for count
+     * @return result of count operation
+     * @since 0.3
+     */
+    long count(String indName);
+    
+    /**
+     * Count calculation of given indicate with filter. It equal to "SELECT COUNT({indName}) FROM {fact table of cube} WHERE 
+     * {dimension1 IN (a, b, c)} AND {dimension2 IN (d, e, f)}".
+     * @param indName indicate name for count
+     * @param filterDims filter dimensions
+     * @return result of count operation
+     * @since 0.3
+     */
+    long count(String indName, Map<String, List<Integer>> filterDims);
+    
+    /**
+     * Count calculation of given indicate with filter and grouper. It equal to "SELECT COUNT({indName}) FROM {fact table of cube} WHERE 
+     * {dimension1 IN (a, b, c)} AND {dimension2 IN (d, e, f)} group by {dimension3}".
+     * @param indName indicate name for count
+     * @param groupByDimName group by dimensions
+     * @param filterDims filter dimensions
+     * @return result of count operation
+     * @since 0.3
+     */
+    Map<Integer, Long> count(String indName, String groupByDimName, Map<String, List<Integer>> filterDims);
+
+    
+    /**
      * Distinct calculation of given indicate with filter and grouper. It equal to "SELECT DISTINCT {indName} FROM {fact table of cube} WHERE 
      * {dimension1 IN (a, b, c)} AND {dimension2 IN (d, e, f)} group by {dimension3}".
      * @param distinctName name for distinct

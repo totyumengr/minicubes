@@ -215,6 +215,48 @@ public class MiniCube implements Aggregations {
                 filterDims, group.size(), enterTime);
         return group;
     }
+    
+    @Override
+    public long count(String indName) {
+        
+        // Delegate to overload method
+        return count(indName, null);
+    }
+
+    @Override
+    public long count(String indName,
+            Map<String, List<Integer>> filterDims) {
+        
+        long enterTime = System.currentTimeMillis();
+        
+        Stream<Entry<Integer, Record>> stream = filter(filterDims);
+        LOGGER.debug("Prepare predicate using {} ms.", System.currentTimeMillis() - enterTime);
+        
+        Long count = stream.count();
+        
+        enterTime = System.currentTimeMillis() - enterTime;
+        LOGGER.info("Count {} filter {} result {} using {} ms.", indName, filterDims, count, enterTime);
+        
+        return count;
+    }
+
+    @Override
+    public Map<Integer, Long> count(String indName,
+            String groupByDimName, Map<String, List<Integer>> filterDims) {
+        
+        long enterTime = System.currentTimeMillis();
+        Stream<Entry<Integer, Record>> stream = filter(filterDims);
+        
+        Map<Integer, Long> group = stream.collect(Collectors.groupingBy(p->p.getValue().getDim(groupByDimName), 
+                Collectors.counting()));
+        
+        enterTime = System.currentTimeMillis() - enterTime;
+        LOGGER.debug("Group by {} count {} filter {} result {} using {} ms.", groupByDimName, indName, 
+                filterDims, group, enterTime);
+        LOGGER.info("Group by {} count {} filter {} result size {} using {} ms.", groupByDimName, indName, 
+                filterDims, group.size(), enterTime);
+        return group;
+    }
 
     @Override
     public String toString() {

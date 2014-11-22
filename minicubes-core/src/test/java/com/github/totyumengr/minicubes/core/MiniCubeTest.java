@@ -322,4 +322,21 @@ public class MiniCubeTest {
         Assert.assertEquals("138240687.91500000", miniCube.sum("csm", filter).toString());
     }
     
+    @Test
+    public void test_7_1_Count_20140606() throws Throwable {
+        
+        Map<String, List<Integer>> filter = new HashMap<String, List<Integer>>(1);
+        filter.put("the_date", Arrays.asList(new Integer[] {20140606}));
+        miniCube.setParallelMode(false);
+        for (int i = 0; i < 5; i++) {
+            Assert.assertEquals(903885L, miniCube.count("csm", filter));
+            Thread.sleep(1000L);
+        }
+        miniCube.setParallelMode(true);
+        for (int i = 0; i < 5; i++) {
+            Assert.assertEquals(903885L, miniCube.count("csm", filter));
+            Thread.sleep(1000L);
+        }
+    }
+    
 }

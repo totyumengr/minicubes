@@ -3,7 +3,9 @@ MiniCubes
 
 MiniCubes是一个轻量级、高性能、分布式、内存型OLAP计算引擎，提供**分布式计算函数**有：
 * sum：指定指标的SUM聚集计算。
-* groupby-sum；指定指标在某一维度上的GROUPBY聚合计算。
+* groupby-sum；指定指标在某一维度上的GROUPBY SUM聚合计算。
+* count：指定指标的COUNT聚集计算。
+* groupby-count；指定指标在某一维度上的GROUPBY COUNT聚合计算。
 * groupby-distinct：指定指标/维度在某一维度上的DISTINCT计算。
 * groupby-distinct-count：指定指标/维度在某一维度上的DISTINCT-COUNT计算。
 

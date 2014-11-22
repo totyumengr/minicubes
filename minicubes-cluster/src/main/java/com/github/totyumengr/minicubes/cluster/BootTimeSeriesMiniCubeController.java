@@ -136,6 +136,38 @@ public class BootTimeSeriesMiniCubeController {
         return sum;
     }
     
+    @RequestMapping(value="/count", method={RequestMethod.POST, RequestMethod.GET})
+    public @ResponseBody Long count(@NotBlank @RequestParam String indName, 
+            @RequestParam(required=false) String filterDims,
+            @NotBlank @RequestParam String... timeSeries) throws Throwable {
+        
+        LOGGER.info("Try to count {} on {} with filter {}.", indName, ObjectUtils.getDisplayString(timeSeries), filterDims);
+        long timing = System.currentTimeMillis();
+        Map<String, List<Integer>> filter = (filterDims == null || "".equals(filterDims)) ? null
+                : objectMapper.readValue(filterDims, new TypeReference<Map<String, List<Integer>>>() {});
+        long count = manager.aggs(timeSeries).count(indName, filter);
+        LOGGER.info("Sucess to count {} on {} result is {} using {}ms.", indName, timeSeries, count, System.currentTimeMillis() - timing);
+        
+        return count;
+    }
+    
+    @RequestMapping(value="/groupcount", method={RequestMethod.POST, RequestMethod.GET})
+    public @ResponseBody Map<Integer, Long> groupcount(@NotBlank @RequestParam String indName, 
+            @RequestParam(required=false) String filterDims,
+            @RequestParam String groupbyDim,
+            @NotBlank @RequestParam String... timeSeries) throws Throwable {
+        
+        LOGGER.info("Try to count {} on {} with filter {}.", indName, ObjectUtils.getDisplayString(timeSeries), filterDims);
+        long timing = System.currentTimeMillis();
+        Map<String, List<Integer>> filter = (filterDims == null || "".equals(filterDims)) ? null
+                : objectMapper.readValue(filterDims, new TypeReference<Map<String, List<Integer>>>() {});
+        Map<Integer, Long> count = manager.aggs(timeSeries).count(indName, groupbyDim, filter);
+        LOGGER.info("Sucess to count {} on {} result size is {} using {}ms.", indName, timeSeries, count.size(), System.currentTimeMillis() - timing);
+        LOGGER.debug("Sucess to count {} on {} result is {}.", indName, timeSeries, count);
+        
+        return count;
+    }
+    
     @RequestMapping(value="/distinct", method={RequestMethod.POST, RequestMethod.GET})
     public @ResponseBody Map<Integer, Set<Integer>> distinct(@NotBlank @RequestParam String indName,
             @NotBlank @RequestParam(required=false) Boolean isDim,
