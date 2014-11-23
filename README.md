@@ -9,13 +9,17 @@ MiniCubes是一个轻量级、高性能、分布式、内存型OLAP计算引擎�
 * groupby-distinct：指定指标/维度在某一维度上的DISTINCT计算。
 * groupby-distinct-count：指定指标/维度在某一维度上的DISTINCT-COUNT计算。
 
+MiniCubes作为[百度BI平台](https://github.com/Baidu-ecom/bi-platform "百度BI平台")的原形项目，会实验性使用一些新技术：
+* Java8 Nashorn：使用Nashorn引擎在索引构建阶段加入自定义扩展功能，可提供原始数据中没有的维度列，增强查询能力。
+* JavaFX 8：使用JavaFX构建客户端软件，并发布运行在Andriod、iOS的环境中，增加移动BI特性。
+
 ## 设计原则：
 * MiniCubes追求极致的fat-table设计，支持在数据导入阶段增加自定义维度索引列。
 * MiniCubes倾向于构建“自包含”的微服务，**只依赖JVM**即可运行，简单极致的集群化部署流程。
 * MiniCubes设计上追求极致简单，代码量只有**2k**行左右，未来也会尽力保持她小而美。
 
 ## 使用&依赖：
-* Maven依赖库：
+* Maven依赖（已发布到Maven Central Repository）：
 ```
 <dependency>
     <groupId>com.github.totyumengr</groupId>
@@ -73,7 +77,7 @@ java -server -jar minicubes-cluster-VERSIONS.jar
 
 ## 模块列表如下：
 #### minicubes-core：
-本模块提供内存型Cube的操作接口，设计目标就是：高性能
+本模块提供内存型Cube的操作接口，设计目标是：高性能
 * 使用[Java8 Stream](https://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html "Java8 Stream")来提高聚集方法性能，使用parallel模式。
 * 使用[Bitmap Index](https://github.com/lemire/RoaringBitmap "compressed bitset")来增强部分聚集方法性能。
 * 使用[DoubleDouble](http://tsusiatsoftware.net/dd/main.html "DoubleDouble")替换Java.math.BigDecimal来降低内存占用。
@@ -81,7 +85,11 @@ java -server -jar minicubes-cluster-VERSIONS.jar
 *注意这里有个坑：new DoubleDouble("1926")的结果是0.1926，需要改为new DoubleDouble("1926.00000000")*
 
 #### minicubes-cluster：
-本模块提供分布式计算能力，设计目标就是：高可用
+本模块提供分布式计算能力，设计目标是：高可用
 * 使用[MySQL Streaming](http://dev.mysql.com/doc/connector-j/en/connector-j-reference-implementation-notes.html "MySQL Streaming")来适应大结果集的加载。
 * 使用[Hazelcast](https://github.com/hazelcast/hazelcast "Hazelcast")提供集群管理和分布式ExecutorService。
 * 使用maven-surefire插件的[Fork Mode](http://maven.apache.org/surefire/maven-surefire-plugin/examples/fork-options-and-parallel-execution.html "Fork Mode")，来做集群部署集成测试，保证代码质量。
+
+#### minicubes-fxclient（开发中尚未正式发布）：
+本模块是客户端程序，设计目标是：多端使用
+* 使用[JavaFX 8](https://docs.oracle.com/javase/8/javase-clienttechnologies.htm "JavaFX 8")来开发本地客户端，并可在Android甚至iOS上运行。
