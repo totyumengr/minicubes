@@ -15,12 +15,12 @@
  */
 package com.github.totyumengr.minicubes.fxclient;
 
+import java.io.IOException;
+
 import javafx.application.Application;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.layout.StackPane;
+import javafx.scene.layout.AnchorPane;
 import javafx.stage.Stage;
 
 /**
@@ -30,38 +30,34 @@ import javafx.stage.Stage;
  */
 public class ClientApp extends Application {
     
+    private Stage stage;
+    
     @Override
     public void start(Stage primaryStage) throws Exception {
         
-        // Create pane
-        StackPane root = new StackPane();
-        // Create scene
-        Scene scene = new Scene(root, 300, 400);
+        this.stage = primaryStage;
         
-        // Build pane
-        build(root);
-        
-        // Mount to stage
-        primaryStage.setScene(scene);
-        primaryStage.setTitle("Hello minicubes-fxclient");
+        showCpuIdel();
         
         primaryStage.show();
     }
     
-    private void build(StackPane root) {
+    private void showCpuIdel() {
         
-        // FIXME: Change to actual client.
+        String cpuIdel = "cpuIdel.fxml";
+        FXMLLoader loader = new FXMLLoader();
+        loader.setLocation(ClientApp.class.getResource(cpuIdel));
         
-        Button hello = new Button("Click me!");
-        hello.setOnAction(new EventHandler<ActionEvent>() {
+        try {
+            AnchorPane pane = (AnchorPane) loader.load();
+            Scene scene = new Scene(pane);
+            stage.setScene(scene);
             
-            @Override
-            public void handle(ActionEvent event) {
-                System.out.println("Clicked...");
-            }
-        });
+            stage.setTitle("CPU Idel - Performance Testing");
+        } catch (IOException e) {
+            throw new RuntimeException("Fail to load fxml resource " + cpuIdel, e);
+        }
         
-        root.getChildren().add(hello);
     }
     
     public static void main(String[] args) {

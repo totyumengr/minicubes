@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.effect.*?>
+<?import javafx.scene.text.*?>
+<?import javafx.scene.chart.*?>
+<?import javafx.scene.control.*?>
+<?import java.lang.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane fx:id="cpuIdel" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="539.0" prefWidth="673.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.github.totyumengr.minicubes.fxclient.CpuIdelController">
+   <children>
+      <HBox layoutX="14.0" layoutY="10.0" prefHeight="32.0" prefWidth="309.0">
+         <children>
+            <Label prefHeight="33.0" prefWidth="173.0" text="压力测试">
+               <font>
+                  <Font name="Microsoft YaHei" size="18.0" />
+               </font>
+            </Label>
+         </children>
+      </HBox>
+      <TextArea fx:id="url" layoutX="34.0" layoutY="77.0" prefHeight="77.0" prefWidth="593.0" />
+      <Label layoutX="34.0" layoutY="53.0" prefHeight="20.0" prefWidth="117.0" text="MiniCubes URL：" />
+      <Separator layoutX="14.0" layoutY="43.0" prefWidth="200.0" />
+      <Slider fx:id="threadRange" layoutX="99.0" layoutY="167.0" max="10.0" min="1.0" prefHeight="23.0" prefWidth="140.0" value="1.0" />
+      <Label layoutX="35.0" layoutY="161.0" prefHeight="32.0" prefWidth="75.0" text="并发区间：">
+         <font>
+            <Font name="Microsoft YaHei" size="12.0" />
+         </font>
+      </Label>
+      <Button fx:id="end" defaultButton="true" layoutX="454.0" layoutY="161.0" mnemonicParsing="false" onAction="#endOnAction" prefHeight="34.0" prefWidth="173.0" text="结束">
+         <font>
+            <Font name="Microsoft YaHei" size="16.0" />
+         </font>
+      </Button>
+      <HBox layoutX="34.0" layoutY="220.0" prefHeight="281.0" prefWidth="593.0">
+         <children>
+            <LineChart fx:id="cpuIdelLineChart" alternativeRowFillVisible="false" animated="false" horizontalGridLinesVisible="false" horizontalZeroLineVisible="false" legendVisible="false" nodeOrientation="LEFT_TO_RIGHT" prefHeight="290.0" prefWidth="588.0" title="CPU Idel" verticalGridLinesVisible="false" verticalZeroLineVisible="false">
+              <xAxis>
+                <CategoryAxis fx:id="cpuIdelLineChartxAxis" animated="false" nodeOrientation="LEFT_TO_RIGHT" side="BOTTOM" tickLabelsVisible="false" tickMarkVisible="false" />
+              </xAxis>
+              <yAxis>
+                <NumberAxis fx:id="cpuIdelLineChartyAxis" autoRanging="false" minorTickVisible="false" nodeOrientation="LEFT_TO_RIGHT" side="LEFT" />
+              </yAxis>
+               <effect>
+                  <Lighting>
+                     <bumpInput>
+                        <Shadow />
+                     </bumpInput>
+                     <light>
+                        <Light.Distant />
+                     </light>
+                  </Lighting>
+               </effect>
+            </LineChart>
+         </children>
+      </HBox>
+      <Button fx:id="start1" defaultButton="true" layoutX="272.0" layoutY="161.0" mnemonicParsing="false" onAction="#startOnAction" prefHeight="34.0" prefWidth="173.0" text="开始">
+         <font>
+            <Font name="Microsoft YaHei" size="16.0" />
+         </font>
+      </Button>
+   </children>
+</AnchorPane>
