@@ -133,7 +133,8 @@ public class FactTable {
         Assert.hasText(name, "Fact-table name can not empty.");
         
         this.meta = meta;
-        this.records = new HashMap<Integer, FactTable.Record>(0);;
+        // Because the records is immutable, so we increase the load-factor to save memory.
+        this.records = new HashMap<Integer, FactTable.Record>(0, 0.9f);
     }
     
     /**
